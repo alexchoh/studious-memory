@@ -1,0 +1,893 @@
+<title>__PAGE_TITLE__</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+  rel="stylesheet"
+/>
+<style>
+  :root {
+    color-scheme: light;
+    --page-bg: #f5f7f1;
+    --surface: #ffffff;
+    --surface-2: #edf1e7;
+    --surface-3: #e3e9dc;
+    --border: rgba(10, 20, 12, 0.12);
+    --border-soft: rgba(10, 20, 12, 0.07);
+    --text-primary: #10140f;
+    --text-secondary: #47533f;
+    --text-muted: #7a8571;
+    --accent: #1f8a4c;
+    --accent-strong: #146536;
+    --accent-ink: #ffffff;
+    --accent-wash: rgba(31, 138, 76, 0.09);
+    --gold: #a5721b;
+    --gold-ink: #ffffff;
+    --gold-wash: #fbecd2;
+    --live: #c62e2e;
+    --live-wash: rgba(198, 46, 46, 0.1);
+    --good: #0ca30c;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #c98100;
+    --series-5: #e87ba4;
+    --shadow: 0 1px 2px rgba(10, 20, 12, 0.06), 0 8px 24px -12px rgba(10, 20, 12, 0.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page-bg: #0a0f0a;
+      --surface: #121a12;
+      --surface-2: #182018;
+      --surface-3: #202a1f;
+      --border: rgba(255, 255, 255, 0.1);
+      --border-soft: rgba(255, 255, 255, 0.06);
+      --text-primary: #eef2ea;
+      --text-secondary: #b6c2b1;
+      --text-muted: #7f8a7a;
+      --accent: #3ddc72;
+      --accent-strong: #5ee68c;
+      --accent-ink: #07160c;
+      --accent-wash: rgba(61, 220, 114, 0.1);
+      --gold: #e8b84b;
+      --gold-ink: #241a02;
+      --gold-wash: rgba(232, 184, 75, 0.12);
+      --live: #e66767;
+      --live-wash: rgba(230, 103, 103, 0.14);
+      --good: #2fc12f;
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --series-4: #d99b1c;
+      --series-5: #d55181;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 28px -14px rgba(0, 0, 0, 0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page-bg: #0a0f0a;
+    --surface: #121a12;
+    --surface-2: #182018;
+    --surface-3: #202a1f;
+    --border: rgba(255, 255, 255, 0.1);
+    --border-soft: rgba(255, 255, 255, 0.06);
+    --text-primary: #eef2ea;
+    --text-secondary: #b6c2b1;
+    --text-muted: #7f8a7a;
+    --accent: #3ddc72;
+    --accent-strong: #5ee68c;
+    --accent-ink: #07160c;
+    --accent-wash: rgba(61, 220, 114, 0.1);
+    --gold: #e8b84b;
+    --gold-ink: #241a02;
+    --gold-wash: rgba(232, 184, 75, 0.12);
+    --live: #e66767;
+    --live-wash: rgba(230, 103, 103, 0.14);
+    --good: #2fc12f;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #d99b1c;
+    --series-5: #d55181;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 28px -14px rgba(0, 0, 0, 0.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--page-bg);
+    color: var(--text-primary);
+  }
+  body {
+    font-family: "Work Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 28px 20px 80px;
+  }
+
+  /* ---------- Header ---------- */
+  .masthead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+  .masthead-title {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  h1 {
+    font-family: "Teko", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: clamp(34px, 6vw, 46px);
+    letter-spacing: 0.01em;
+    margin: 0;
+    line-height: 0.95;
+    text-wrap: balance;
+  }
+  .masthead-meta {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: right;
+  }
+  .masthead-meta strong { color: var(--text-secondary); font-weight: 500; }
+
+  /* ---------- Section headings ---------- */
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 44px 0 14px;
+  }
+  .section-head h2 {
+    font-family: "Teko", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 26px;
+    letter-spacing: 0.01em;
+    margin: 0;
+    text-transform: uppercase;
+  }
+  .section-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  /* ---------- Hero / leader card ---------- */
+  .hero {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 640px) { .hero { grid-template-columns: 1fr; } }
+  .leader-card {
+    background: linear-gradient(155deg, var(--gold-wash), var(--surface) 55%);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .leader-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      100deg,
+      transparent,
+      transparent 42px,
+      var(--border-soft) 42px,
+      var(--border-soft) 43px
+    );
+    pointer-events: none;
+    opacity: 0.6;
+  }
+  .leader-label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 500;
+  }
+  .leader-name {
+    font-family: "Teko", system-ui, sans-serif;
+    font-size: clamp(30px, 5vw, 42px);
+    font-weight: 600;
+    line-height: 1;
+    margin: 6px 0 2px;
+  }
+  .leader-manager { color: var(--text-secondary); font-size: 14px; margin-bottom: 14px; }
+  .leader-stats { display: flex; gap: 26px; align-items: baseline; }
+  .leader-stat-value {
+    font-family: "Teko", system-ui, sans-serif;
+    font-size: 40px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .leader-stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .margin-note { margin-top: 12px; font-size: 13px; color: var(--text-secondary); }
+
+  .scoring-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .scoring-card h3 {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+    font-weight: 500;
+  }
+  .scoring-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 14px;
+  }
+  .scoring-row:last-child { border-bottom: none; }
+  .scoring-rank { color: var(--text-secondary); }
+  .scoring-pts {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- Leaderboard table ---------- */
+  .board {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+  }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; }
+  thead th {
+    text-align: left;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  thead th.num, td.num { text-align: right; }
+  tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 14px;
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.is-leader { background: var(--gold-wash); }
+  td.num { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+  .pos-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    font-family: "Teko", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    background: var(--surface-2);
+    color: var(--text-secondary);
+  }
+  .pos-badge.p1 { background: var(--gold); color: var(--gold-ink); }
+  .team-cell { display: flex; align-items: center; gap: 10px; }
+  .team-name { font-weight: 600; color: var(--text-primary); }
+  .manager-name { display: block; font-size: 12px; color: var(--text-muted); font-weight: 400; }
+  .chip-tag {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: var(--accent-wash);
+    color: var(--accent-strong);
+    margin-left: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 22px; }
+  .spark i {
+    display: block;
+    width: 4px;
+    border-radius: 1px;
+    background: var(--accent);
+    opacity: 0.85;
+  }
+
+  /* ---------- Chart ---------- */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px 12px;
+    box-shadow: var(--shadow);
+  }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px 18px; margin-bottom: 6px; font-size: 12.5px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .chart-svg-wrap { position: relative; }
+  .chart-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    box-shadow: var(--shadow);
+    opacity: 0;
+    transition: opacity 0.1s ease;
+    z-index: 5;
+    min-width: 130px;
+  }
+  .chart-tooltip.visible { opacity: 1; }
+  .chart-tooltip .tt-gw { font-family: "IBM Plex Mono", monospace; color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .chart-tooltip .tt-row { display: flex; justify-content: space-between; gap: 10px; padding: 1px 0; }
+  .chart-tooltip .tt-row span:first-child { display: flex; align-items: center; gap: 5px; color: var(--text-secondary); }
+  .chart-tooltip .tt-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .chart-tooltip .tt-val { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+
+  /* ---------- Gameweek cards ---------- */
+  .gw-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .gw-card summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .gw-card summary::-webkit-details-marker { display: none; }
+  .gw-head-left { display: flex; align-items: center; gap: 12px; }
+  .gw-num {
+    font-family: "Teko", system-ui, sans-serif;
+    font-size: 26px;
+    font-weight: 600;
+  }
+  .status-pill {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 100px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .status-pill.live { background: var(--live-wash); color: var(--live); }
+  .status-pill.done { background: var(--surface-2); color: var(--text-muted); }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--live);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .gw-toggle-icon {
+    font-family: "IBM Plex Mono", monospace;
+    color: var(--text-muted);
+    font-size: 13px;
+    transition: transform 0.15s ease;
+  }
+  details[open] .gw-toggle-icon { transform: rotate(90deg); }
+  .gw-body { padding: 0 20px 20px; border-top: 1px solid var(--border-soft); }
+  .gw-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .gw-table th {
+    text-align: left;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .gw-table th.num, .gw-table td.num { text-align: right; }
+  .gw-table td {
+    padding: 9px 10px;
+    font-size: 13.5px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .gw-table tr:last-child td { border-bottom: none; }
+  .medal { font-family: "Teko", system-ui, sans-serif; font-weight: 600; font-size: 17px; }
+  .medal.m1 { color: var(--gold); }
+  .tourney-pts {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 500;
+    color: var(--accent-strong);
+    font-variant-numeric: tabular-nums;
+  }
+  .cap-tag { font-size: 12px; color: var(--text-secondary); }
+  .cap-tag b { color: var(--text-primary); font-weight: 600; }
+
+  .facts-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .fact-chip {
+    flex: 1 1 210px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 10px 13px;
+  }
+  .fact-label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .fact-value { font-size: 13.5px; color: var(--text-primary); }
+  .fact-value b { font-weight: 600; }
+
+  footer {
+    margin-top: 50px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  a { color: var(--accent-strong); }
+
+  .empty-note { padding: 24px; text-align: center; color: var(--text-muted); font-size: 14px; }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="masthead-title">
+      <span class="eyebrow">Tournament Table</span>
+      <h1 id="league-name">League</h1>
+    </div>
+    <div class="masthead-meta">
+      Gameweek <strong id="meta-gw">-</strong> of <strong id="meta-total-gw">38</strong><br />
+      Updated <strong id="meta-updated">-</strong>
+    </div>
+  </header>
+
+  <section id="hero-section"></section>
+
+  <div class="section-head">
+    <h2>Season Leaderboard</h2>
+    <span class="section-sub">Accumulated tournament points across all gameweeks</span>
+  </div>
+  <div class="board"><table id="board-table"></table></div>
+
+  <div class="section-head">
+    <h2>Season Progression</h2>
+    <span class="section-sub">Cumulative tournament points by gameweek</span>
+  </div>
+  <div class="chart-card" id="chart-card"></div>
+
+  <div class="section-head">
+    <h2>Gameweek by Gameweek</h2>
+    <span class="section-sub">Most recent first</span>
+  </div>
+  <div id="gw-list"></div>
+
+  <footer>
+    <span>Source data: official Fantasy Premier League API, league <span id="foot-league-id"></span>.</span>
+    <span>Auto-refreshes roughly every hour while gameweeks are live.</span>
+  </footer>
+</div>
+
+<script id="fpl-raw-data" type="application/json">__FPL_DATA_JSON__</script>
+<script>
+(function () {
+  var DATA = JSON.parse(document.getElementById("fpl-raw-data").textContent);
+  var SERIES_COLORS_VAR = ["--series-1", "--series-2", "--series-3", "--series-4", "--series-5"];
+
+  function esc(s) {
+    if (s === null || s === undefined) return "";
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+  function fmtNum(n) {
+    if (n === null || n === undefined) return "-";
+    var r = Math.round(n * 100) / 100;
+    return r % 1 === 0 ? String(r) : r.toFixed(2);
+  }
+  function fmtDate(iso) {
+    if (!iso) return "-";
+    var d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+  function ordinal(n) {
+    var s = ["th", "st", "nd", "rd"], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+
+  // ---------- Header ----------
+  document.title = DATA.league_name;
+  document.getElementById("league-name").textContent = DATA.league_name;
+  document.getElementById("meta-gw").textContent = DATA.current_event;
+  document.getElementById("meta-total-gw").textContent = DATA.total_events;
+  document.getElementById("meta-updated").textContent = fmtDate(DATA.generated_at);
+  document.getElementById("foot-league-id").textContent = "#" + DATA.league_id;
+
+  var board = DATA.leaderboard || [];
+
+  // ---------- Hero ----------
+  (function renderHero() {
+    var el = document.getElementById("hero-section");
+    if (!board.length) {
+      el.innerHTML = '<div class="empty-note">No results yet — check back once gameweek 1 kicks off.</div>';
+      return;
+    }
+    var leader = board[0];
+    var second = board[1];
+    var margin = second ? fmtNum(leader.tournament_points - second.tournament_points) : null;
+
+    var scoring = DATA.scoring_table || {};
+    var scoringRows = Object.keys(scoring)
+      .map(function (k) {
+        return (
+          '<div class="scoring-row"><span class="scoring-rank">' +
+          esc(k) +
+          '</span><span class="scoring-pts">' +
+          esc(scoring[k]) +
+          " pt" + (scoring[k] === 1 ? "" : "s") +
+          "</span></div>"
+        );
+      })
+      .join("");
+
+    el.innerHTML =
+      '<div class="hero">' +
+      '<div class="leader-card">' +
+      '<div class="leader-label">In the Lead</div>' +
+      '<div class="leader-name">' + esc(leader.team_name) + "</div>" +
+      '<div class="leader-manager">' + esc(leader.manager_name) + "</div>" +
+      '<div class="leader-stats">' +
+      '<div><div class="leader-stat-value">' + fmtNum(leader.tournament_points) + '</div><div class="leader-stat-label">Tournament pts</div></div>' +
+      '<div><div class="leader-stat-value">' + fmtNum(leader.gw_wins) + '</div><div class="leader-stat-label">GW wins</div></div>' +
+      '<div><div class="leader-stat-value">' + esc(leader.fpl_total_points) + '</div><div class="leader-stat-label">FPL points</div></div>' +
+      "</div>" +
+      (margin !== null
+        ? '<div class="margin-note">Leading ' + esc(second.team_name) + " by <b>" + margin + "</b> point" + (margin == 1 ? "" : "s") + ".</div>"
+        : "") +
+      "</div>" +
+      '<div class="scoring-card"><h3>Weekly Scoring</h3>' + scoringRows + "</div>" +
+      "</div>";
+  })();
+
+  // ---------- Leaderboard table ----------
+  (function renderBoard() {
+    var t = document.getElementById("board-table");
+    if (!board.length) { t.parentElement.innerHTML = '<div class="empty-note">No standings yet.</div>'; return; }
+    var maxGw = Math.max.apply(null, board.map(function (b) { return b.gw_history.length; }));
+    var maxSpark = Math.max.apply(null, board.map(function (b) { return Math.max.apply(null, b.gw_history.concat([1])); }));
+
+    var head =
+      "<thead><tr>" +
+      '<th>#</th><th>Team</th><th class="num">Form</th>' +
+      '<th class="num">GW Wins</th><th class="num">FPL Pts</th><th class="num">Tournament Pts</th>' +
+      "</tr></thead>";
+
+    var rows = board
+      .map(function (row) {
+        var spark = row.gw_history
+          .map(function (v) {
+            var h = Math.max(3, Math.round((v / maxSpark) * 20));
+            return '<i style="height:' + h + 'px" title="GW pts ' + fmtNum(v) + '"></i>';
+          })
+          .join("");
+        var chips = (row.chips_used || [])
+          .map(function (c) { return '<span class="chip-tag">' + esc(c) + "</span>"; })
+          .join("");
+        return (
+          '<tr class="' + (row.position === 1 ? "is-leader" : "") + '">' +
+          '<td><span class="pos-badge ' + (row.position === 1 ? "p1" : "") + '">' + row.position + "</span></td>" +
+          '<td><div class="team-cell"><div><span class="team-name">' + esc(row.team_name) + "</span>" + chips +
+          '<span class="manager-name">' + esc(row.manager_name) + "</span></div></div></td>" +
+          '<td class="num"><span class="spark">' + spark + "</span></td>" +
+          '<td class="num">' + fmtNum(row.gw_wins) + "</td>" +
+          '<td class="num">' + esc(row.fpl_total_points) + "</td>" +
+          '<td class="num" style="font-weight:600">' + fmtNum(row.tournament_points) + "</td>" +
+          "</tr>"
+        );
+      })
+      .join("");
+
+    t.innerHTML = head + "<tbody>" + rows + "</tbody>";
+  })();
+
+  // ---------- Progression chart ----------
+  (function renderChart() {
+    var card = document.getElementById("chart-card");
+    if (!board.length || !board[0].gw_history.length) {
+      card.innerHTML = '<div class="empty-note">Chart will appear once a gameweek has finished.</div>';
+      return;
+    }
+    var numGw = board[0].gw_history.length;
+    if (numGw < 1) return;
+
+    var colors = board.map(function (_, i) { return cssVar(SERIES_COLORS_VAR[i % SERIES_COLORS_VAR.length]); });
+
+    var legend =
+      '<div class="legend">' +
+      board
+        .map(function (row, i) {
+          return (
+            '<div class="legend-item"><span class="legend-swatch" style="background:' +
+            colors[i] +
+            '"></span>' +
+            esc(row.team_name) +
+            "</div>"
+          );
+        })
+        .join("") +
+      "</div>";
+
+    // cumulative series
+    var series = board.map(function (row) {
+      var cum = 0;
+      return row.gw_history.map(function (v) {
+        cum += v;
+        return cum;
+      });
+    });
+    var maxY = Math.max.apply(null, series.map(function (s) { return s[s.length - 1]; }).concat([1]));
+
+    var W = 1000, H = 300, padL = 34, padR = 16, padT = 16, padB = 30;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    function xAt(i) { return numGw === 1 ? padL + plotW / 2 : padL + (i / (numGw - 1)) * plotW; }
+    function yAt(v) { return padT + plotH - (v / maxY) * plotH; }
+
+    var gridLines = "";
+    var ySteps = 4;
+    for (var g = 0; g <= ySteps; g++) {
+      var val = (maxY / ySteps) * g;
+      var y = yAt(val);
+      gridLines +=
+        '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="var(--border-soft)" stroke-width="1" />' +
+        '<text x="' + (padL - 8) + '" y="' + (y + 3) + '" text-anchor="end" font-size="10" fill="var(--text-muted)" font-family="IBM Plex Mono, monospace">' + Math.round(val) + "</text>";
+    }
+    var xLabels = "";
+    for (var i = 0; i < numGw; i++) {
+      if (numGw > 12 && i % Math.ceil(numGw / 12) !== 0 && i !== numGw - 1) continue;
+      xLabels +=
+        '<text x="' + xAt(i) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10" fill="var(--text-muted)" font-family="IBM Plex Mono, monospace">GW' + (i + 1) + "</text>";
+    }
+
+    var paths = series
+      .map(function (s, si) {
+        var line = "";
+        if (s.length > 1) {
+          var d = s
+            .map(function (v, i) { return (i === 0 ? "M" : "L") + xAt(i) + "," + yAt(v); })
+            .join(" ");
+          line = '<path d="' + d + '" fill="none" stroke="' + colors[si] + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />';
+        }
+        var lastIdx = s.length - 1;
+        var endpoint =
+          '<circle cx="' + xAt(lastIdx) + '" cy="' + yAt(s[lastIdx]) + '" r="4.5" fill="' + colors[si] + '" stroke="var(--surface)" stroke-width="1.5" />';
+        return line + endpoint;
+      })
+      .join("");
+
+    // invisible hover targets, one per gameweek column
+    var hoverCols = "";
+    for (var hi = 0; hi < numGw; hi++) {
+      hoverCols +=
+        '<rect data-gwidx="' + hi + '" x="' + (xAt(hi) - plotW / Math.max(numGw, 1) / 2) + '" y="' + padT + '" width="' + (plotW / Math.max(numGw, 1)) + '" height="' + plotH + '" fill="transparent" class="hover-col" />';
+    }
+
+    card.innerHTML =
+      legend +
+      '<div class="chart-svg-wrap">' +
+      '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="xMidYMid meet" style="display:block;width:100%;height:auto" id="chart-svg">' +
+      gridLines +
+      paths +
+      xLabels +
+      '<g id="hover-marks"></g>' +
+      hoverCols +
+      "</svg>" +
+      '<div class="chart-tooltip" id="chart-tooltip"></div>' +
+      "</div>";
+
+    var svg = document.getElementById("chart-svg");
+    var tooltip = document.getElementById("chart-tooltip");
+    var hoverMarks = document.getElementById("hover-marks");
+    var wrap = card.querySelector(".chart-svg-wrap");
+
+    function showTip(idx, evt) {
+      var rows = board
+        .map(function (row, si) {
+          return (
+            '<div class="tt-row"><span><span class="tt-dot" style="background:' +
+            colors[si] +
+            '"></span>' +
+            esc(row.team_name) +
+            '</span><span class="tt-val">' +
+            fmtNum(series[si][idx]) +
+            "</span></div>"
+          );
+        })
+        .join("");
+      tooltip.innerHTML = '<div class="tt-gw">Gameweek ' + (idx + 1) + "</div>" + rows;
+      tooltip.classList.add("visible");
+
+      var pt = svg.createSVGPoint();
+      pt.x = xAt(idx);
+      pt.y = padT;
+      var ctm = svg.getScreenCTM();
+      var screenPt = pt.matrixTransform(ctm);
+      var wrapRect = wrap.getBoundingClientRect();
+      var left = screenPt.x - wrapRect.left;
+      var maxLeft = wrapRect.width - 150;
+      tooltip.style.left = Math.min(Math.max(left - 65, 0), Math.max(maxLeft, 0)) + "px";
+      tooltip.style.top = "4px";
+
+      hoverMarks.innerHTML =
+        '<line x1="' + xAt(idx) + '" y1="' + padT + '" x2="' + xAt(idx) + '" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />' +
+        series
+          .map(function (s, si) {
+            return '<circle cx="' + xAt(idx) + '" cy="' + yAt(s[idx]) + '" r="4" fill="' + colors[si] + '" stroke="var(--surface)" stroke-width="1.5" />';
+          })
+          .join("");
+    }
+    function hideTip() {
+      tooltip.classList.remove("visible");
+      hoverMarks.innerHTML = "";
+    }
+    svg.querySelectorAll(".hover-col").forEach(function (rect) {
+      rect.addEventListener("mouseenter", function () { showTip(parseInt(rect.getAttribute("data-gwidx"), 10)); });
+      rect.addEventListener("mouseleave", hideTip);
+    });
+  })();
+
+  // ---------- Gameweek cards ----------
+  (function renderGws() {
+    var list = document.getElementById("gw-list");
+    var gws = DATA.gameweeks || [];
+    if (!gws.length) {
+      list.innerHTML = '<div class="empty-note">No gameweeks played yet.</div>';
+      return;
+    }
+    list.innerHTML = gws
+      .map(function (gw, idx) {
+        var statusHtml = gw.is_live
+          ? '<span class="status-pill live"><span class="live-dot"></span>Live</span>'
+          : gw.finished
+          ? '<span class="status-pill done">Full time</span>'
+          : '<span class="status-pill done">Pending</span>';
+
+        var rows = gw.entries
+          .map(function (e, i) {
+            var medalClass = i === 0 ? "m1" : "";
+            var chip = e.chip ? '<span class="chip-tag">' + esc(e.chip) + "</span>" : "";
+            var capText = e.captain ? '<span class="cap-tag"><b>' + esc(e.captain) + "</b> (C)</span>" : "";
+            return (
+              "<tr>" +
+              '<td><span class="medal ' + medalClass + '">' + ordinal(i + 1) + "</span></td>" +
+              '<td><span class="team-name">' + esc(e.team_name) + "</span>" + chip + '<span class="manager-name">' + esc(e.manager_name) + "</span></td>" +
+              '<td class="num">' + esc(e.gw_points) + "</td>" +
+              '<td class="num tourney-pts">+' + fmtNum(e.tournament_points) + "</td>" +
+              '<td class="num">' + esc(e.points_on_bench) + "</td>" +
+              "<td>" + capText + "</td>" +
+              "</tr>"
+            );
+          })
+          .join("");
+
+        var ff = gw.fun_facts || {};
+        var facts = [];
+        if (ff.best_player) {
+          facts.push({
+            label: "Star Performer",
+            value:
+              "<b>" + esc(ff.best_player.name) + "</b> — " + esc(ff.best_player.points) + " pts" +
+              (ff.best_player.captained ? " (captained)" : "") +
+              " for " + esc(ff.best_player.team),
+          });
+        }
+        if (ff.top_differential) {
+          facts.push({
+            label: "Top Differential",
+            value: "<b>" + esc(ff.top_differential.name) + "</b> — " + esc(ff.top_differential.points) + " pts, owned only by " + esc(ff.top_differential.team),
+          });
+        }
+        if (ff.biggest_bench_waste) {
+          facts.push({
+            label: "Biggest Bench Waste",
+            value: "<b>" + esc(ff.biggest_bench_waste.team) + "</b> left " + esc(ff.biggest_bench_waste.points) + " pts on the bench",
+          });
+        }
+        var factsHtml = facts.length
+          ? '<div class="facts-row">' +
+            facts.map(function (f) { return '<div class="fact-chip"><div class="fact-label">' + esc(f.label) + '</div><div class="fact-value">' + f.value + "</div></div>"; }).join("") +
+            "</div>"
+          : "";
+
+        return (
+          '<details class="gw-card"' + (idx === 0 ? " open" : "") + ">" +
+          "<summary>" +
+          '<div class="gw-head-left"><span class="gw-num">Gameweek ' + gw.gw + "</span>" + statusHtml + "</div>" +
+          '<span class="gw-toggle-icon">&#9656;</span>' +
+          "</summary>" +
+          '<div class="gw-body">' +
+          '<table class="gw-table"><thead><tr>' +
+          '<th>Rank</th><th>Team</th><th class="num">GW Pts</th><th class="num">Tournament</th><th class="num">Bench</th><th>Captain</th>' +
+          "</tr></thead><tbody>" +
+          rows +
+          "</tbody></table>" +
+          factsHtml +
+          "</div>" +
+          "</details>"
+        );
+      })
+      .join("");
+  })();
+})();
+</script>

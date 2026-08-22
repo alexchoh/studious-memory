@@ -1,0 +1,5 @@
+fpl_tournament/data.json
+fpl_tournament/dashboard.html
+fpl_tournament/cache/
+__pycache__/
+*.pyc
