@@ -52,17 +52,57 @@ def parse_kickoff(f):
     return datetime.fromisoformat(f["kickoff_time"].replace("Z", "+00:00"))
 
 
+def fetch_events(session, event_ids):
+    """Fetch fixtures for specific gameweeks via the per-event endpoint.
+
+    The bulk /api/fixtures/ (whole-season) endpoint is cached more
+    aggressively upstream and has been observed serving a stale
+    started=false for a fixture that had already kicked off - the
+    per-event endpoint reflects live state promptly, so that's what
+    scheduling decisions must be based on."""
+    fixtures = []
+    for event_id in event_ids:
+        if event_id < 1 or event_id > 38:
+            continue
+        fixtures.extend(session.get(f"{BASE}/fixtures/?event={event_id}", timeout=20).json())
+    return fixtures
+
+
 def main():
     session = requests.Session()
     session.headers.update({"User-Agent": "Mozilla/5.0 (fpl-tournament-dashboard)"})
-    fixtures = session.get(f"{BASE}/fixtures/", timeout=20).json()
     now = datetime.now(timezone.utc)
     state = load_state()
 
-    unfinished_by_event = {}
-    for f in fixtures:
-        if not f.get("finished_provisional"):
-            unfinished_by_event.setdefault(f["event"], []).append(f)
+    anchor = state.get("last_active_gw")
+    if anchor is None:
+        bootstrap = session.get(f"{BASE}/bootstrap-static/", timeout=20).json()
+        anchor = next((e["id"] for e in bootstrap["events"] if e["is_current"]), None)
+        if anchor is None:
+            anchor = next((e["id"] for e in bootstrap["events"] if e["is_next"]), 1)
+
+    fixtures = fetch_events(session, [anchor, anchor + 1])
+
+    def unfinished_map(fixture_list):
+        m = {}
+        for f in fixture_list:
+            if not f.get("finished_provisional"):
+                m.setdefault(f["event"], []).append(f)
+        return m
+
+    unfinished_by_event = unfinished_map(fixtures)
+
+    if not unfinished_by_event:
+        # Our anchor window is fully finished - state was stale (e.g. this
+        # routine was paused for a while). Re-seed from bootstrap-static
+        # instead of assuming the season is over.
+        bootstrap = session.get(f"{BASE}/bootstrap-static/", timeout=20).json()
+        fresh_anchor = next((e["id"] for e in bootstrap["events"] if e["is_current"]), None)
+        if fresh_anchor is None:
+            fresh_anchor = next((e["id"] for e in bootstrap["events"] if e["is_next"]), None)
+        if fresh_anchor is not None and fresh_anchor != anchor:
+            fixtures = fetch_events(session, [fresh_anchor, fresh_anchor + 1])
+            unfinished_by_event = unfinished_map(fixtures)
 
     active_gw = min(unfinished_by_event.keys()) if unfinished_by_event else None
     prev_active_gw = state.get("last_active_gw")
