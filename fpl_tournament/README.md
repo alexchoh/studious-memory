@@ -5,7 +5,12 @@ head-to-head tournament: every gameweek the 5 managers are ranked by GW points
 and scored 10 / 7 / 5 / 2 / 1 (ties split the points evenly across the tied
 ranks). Points accumulate into a season leaderboard.
 
-Published dashboard: https://claude.ai/code/artifact/ab306cf8-ea32-472e-8d04-c92dda6b5c37
+Live dashboard: **https://alexchoh.github.io/studious-memory/** (GitHub Pages,
+auto-refreshed by `.github/workflows/refresh-dashboard.yml` every 10 minutes)
+
+Previously hosted as a Claude Artifact — that link still exists but is no
+longer kept up to date:
+https://claude.ai/code/artifact/ab306cf8-ea32-472e-8d04-c92dda6b5c37
 
 ## How it works
 
@@ -15,21 +20,21 @@ Published dashboard: https://claude.ai/code/artifact/ab306cf8-ea32-472e-8d04-c92
   points/fun facts, and writes `data.json`. Finished gameweeks are cached under
   `cache/` so a refresh only re-fetches the live/in-progress gameweek.
 - `render.py` injects `data.json` into `template.html`, producing the final
-  self-contained `dashboard.html` that gets published as the Claude Artifact.
-- `schedule_next.py` looks at live fixture state and decides when the next
-  refresh should happen, persisting a little state in `refresh_state.json`:
-  - a match is live right now → check again in **10 minutes**
-  - a gameweek's last fixture just finished → **one final check 2 hours
-    later** (to catch confirmed bonus points, price changes, etc.)
-  - mid-gameweek lull (some fixtures played, more to come, nothing live) →
-    back off, but never longer than ~3 hours, and always in time for the
-    next kickoff
-  - gameweek fully wrapped up → back off to **daily** checks, ramping back
-    up to a tighter cadence as the next gameweek's kickoff approaches
-- A self-rescheduling Routine ties it together: each firing runs
-  `fetch_data.py` → `render.py` → republishes the artifact → runs
-  `schedule_next.py` → reschedules its own next firing via
-  `update_trigger(run_once_at=...)` with whatever that script printed.
+  self-contained `dashboard.html`.
+- **`.github/workflows/refresh-dashboard.yml`** runs on a flat 10-minute cron
+  (`workflow_dispatch` also works for an on-demand run): checks out the repo,
+  runs `fetch_data.py` → `render.py`, copies `dashboard.html` to
+  `_site/index.html`, and deploys it to GitHub Pages via
+  `actions/upload-pages-artifact` + `actions/deploy-pages`. The
+  `fpl_tournament/cache/` directory persists between runs via `actions/cache`
+  so finished gameweeks aren't re-fetched every 10 minutes for the whole
+  season. A flat interval (rather than the live/lull/daily backoff an earlier
+  version used) is deliberate: GitHub Actions minutes on GitHub-hosted
+  runners are free and unlimited for public repos, so there's no cost
+  pressure to back off between gameweeks.
+- `schedule_next.py` is no longer used by the live site (kept for reference /
+  local manual runs) — it drove the old Claude-session-based refresh loop
+  before the GitHub Pages migration.
 
 ## Manual refresh
 

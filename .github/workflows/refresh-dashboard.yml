@@ -1,0 +1,66 @@
+name: Refresh FPL dashboard
+
+on:
+  schedule:
+    # Every 10 minutes, all the time. Cheap to do this flat rather than
+    # adaptive: on a public repo, GitHub Actions minutes for GitHub-hosted
+    # runners are free and unlimited, so there's no cost pressure to back
+    # off between gameweeks the way the old Claude-session routine did.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deployment at a time; never cancel one that's in flight.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Restore finished-gameweek cache
+        uses: actions/cache@v4
+        with:
+          path: fpl_tournament/cache
+          key: fpl-cache-${{ github.run_id }}
+          restore-keys: |
+            fpl-cache-
+
+      - name: Fetch FPL data and render dashboard
+        working-directory: fpl_tournament
+        run: |
+          python3 fetch_data.py
+          python3 render.py
+
+      - name: Assemble Pages site
+        run: |
+          mkdir -p _site
+          cp fpl_tournament/dashboard.html _site/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
