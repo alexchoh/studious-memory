@@ -182,10 +182,9 @@
   /* ---------- Hero / leader card ---------- */
   .hero {
     display: grid;
-    grid-template-columns: 1.3fr 1fr;
+    grid-template-columns: 1fr;
     gap: 16px;
   }
-  @media (max-width: 640px) { .hero { grid-template-columns: 1fr; } }
   .leader-card {
     background: linear-gradient(155deg, var(--gold-wash), var(--surface) 55%);
     border: 1px solid var(--border);
@@ -349,6 +348,25 @@
     padding: 20px 22px 12px;
     box-shadow: var(--shadow);
   }
+  .chart-toggle { display: flex; gap: 6px; margin-bottom: 14px; }
+  .chart-toggle-btn {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  .chart-toggle-btn:hover { color: var(--text-primary); }
+  .chart-toggle-btn[aria-selected="true"] {
+    background: var(--accent-wash);
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    font-weight: 600;
+  }
   .legend { display: flex; flex-wrap: wrap; gap: 14px 18px; margin-bottom: 6px; font-size: 12.5px; }
   .legend-item { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
   .legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
@@ -380,20 +398,45 @@
     border: 1px solid var(--border);
     border-radius: 14px;
     box-shadow: var(--shadow);
-    margin-bottom: 14px;
     overflow: hidden;
+    padding: 16px 20px 20px;
   }
-  .gw-card summary {
-    list-style: none;
-    cursor: pointer;
-    padding: 16px 20px;
+  .gw-tabs {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border-soft);
   }
-  .gw-card summary::-webkit-details-marker { display: none; }
+  .gw-tab-btn {
+    flex: none;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 7px 13px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .gw-tab-btn:hover { color: var(--text-primary); }
+  .gw-tab-btn[aria-selected="true"] {
+    background: var(--accent-wash);
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    font-weight: 600;
+  }
+  .gw-tab-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--live); flex: none;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  .gw-panel-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
   .gw-head-left { display: flex; align-items: center; gap: 12px; }
   .gw-num {
     font-family: "Teko", system-ui, sans-serif;
@@ -419,14 +462,6 @@
     animation: pulse 1.6s ease-in-out infinite;
   }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-  .gw-toggle-icon {
-    font-family: "IBM Plex Mono", monospace;
-    color: var(--text-muted);
-    font-size: 13px;
-    transition: transform 0.15s ease;
-  }
-  details[open] .gw-toggle-icon { transform: rotate(90deg); }
-  .gw-body { padding: 0 20px 20px; border-top: 1px solid var(--border-soft); }
   .gw-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
   .gw-table th {
     text-align: left;
@@ -648,13 +683,13 @@
 
     <div class="section-head">
       <h2>Season Progression</h2>
-      <span class="section-sub">Cumulative tournament points by gameweek</span>
+      <span class="section-sub">Cumulative points tally by gameweek</span>
     </div>
     <div class="chart-card" id="chart-card"></div>
 
     <div class="section-head">
       <h2>Gameweek by Gameweek</h2>
-      <span class="section-sub">Most recent first</span>
+      <span class="section-sub">Pick a gameweek</span>
     </div>
     <div id="gw-list"></div>
   </div>
@@ -736,20 +771,6 @@
     var second = board[1];
     var margin = second ? fmtNum(leader.tournament_points - second.tournament_points) : null;
 
-    var scoring = DATA.scoring_table || {};
-    var scoringRows = Object.keys(scoring)
-      .map(function (k) {
-        return (
-          '<div class="scoring-row"><span class="scoring-rank">' +
-          esc(k) +
-          '</span><span class="scoring-pts">' +
-          esc(scoring[k]) +
-          " pt" + (scoring[k] === 1 ? "" : "s") +
-          "</span></div>"
-        );
-      })
-      .join("");
-
     el.innerHTML =
       '<div class="hero">' +
       '<div class="leader-card">' +
@@ -765,7 +786,6 @@
         ? '<div class="margin-note">Leading ' + esc(second.team_name) + " by <b>" + margin + "</b> point" + (margin == 1 ? "" : "s") + ".</div>"
         : "") +
       "</div>" +
-      '<div class="scoring-card"><h3>Weekly Scoring</h3>' + scoringRows + "</div>" +
       "</div>";
   })();
 
@@ -818,226 +838,322 @@
       card.innerHTML = '<div class="empty-note">Chart will appear once a gameweek has finished.</div>';
       return;
     }
-    var numGw = board[0].gw_history.length;
-    if (numGw < 1) return;
 
     var colors = board.map(function (_, i) { return cssVar(SERIES_COLORS_VAR[i % SERIES_COLORS_VAR.length]); });
+    var MODES = [
+      { key: "tournament", label: "Tournament Points", field: "gw_history" },
+      { key: "fpl", label: "FPL Points", field: "fpl_gw_history" },
+    ];
 
-    var legend =
-      '<div class="legend">' +
-      board
-        .map(function (row, i) {
+    card.innerHTML =
+      '<div class="chart-toggle" role="tablist">' +
+      MODES.map(function (m, i) {
+        return (
+          '<button class="chart-toggle-btn" data-mode="' + m.key + '" role="tab" aria-selected="' +
+          (i === 0 ? "true" : "false") + '">' + esc(m.label) + "</button>"
+        );
+      }).join("") +
+      "</div>" +
+      '<div id="chart-body"></div>';
+
+    function draw(modeKey) {
+      var mode = MODES.filter(function (m) { return m.key === modeKey; })[0] || MODES[0];
+      var body = document.getElementById("chart-body");
+      var numGw = (board[0][mode.field] || []).length;
+      if (numGw < 1) {
+        body.innerHTML = '<div class="empty-note">No data for this view yet.</div>';
+        return;
+      }
+
+      var legend =
+        '<div class="legend">' +
+        board
+          .map(function (row, i) {
+            return (
+              '<div class="legend-item"><span class="legend-swatch" style="background:' +
+              colors[i] +
+              '"></span>' +
+              esc(row.team_name) +
+              "</div>"
+            );
+          })
+          .join("") +
+        "</div>";
+
+      // cumulative series for the selected mode
+      var series = board.map(function (row) {
+        var cum = 0;
+        return (row[mode.field] || []).map(function (v) {
+          cum += v;
+          return cum;
+        });
+      });
+      var maxY = Math.max.apply(null, series.map(function (s) { return s[s.length - 1]; }).concat([1]));
+
+      var W = 1000, H = 300, padL = 40, padR = 16, padT = 16, padB = 30;
+      var plotW = W - padL - padR, plotH = H - padT - padB;
+      function xAt(i) { return numGw === 1 ? padL + plotW / 2 : padL + (i / (numGw - 1)) * plotW; }
+      function yAt(v) { return padT + plotH - (v / maxY) * plotH; }
+
+      var gridLines = "";
+      var ySteps = 4;
+      for (var g = 0; g <= ySteps; g++) {
+        var val = (maxY / ySteps) * g;
+        var y = yAt(val);
+        gridLines +=
+          '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="var(--border-soft)" stroke-width="1" />' +
+          '<text x="' + (padL - 8) + '" y="' + (y + 3) + '" text-anchor="end" font-size="10" fill="var(--text-muted)" font-family="IBM Plex Mono, monospace">' + Math.round(val) + "</text>";
+      }
+      var xLabels = "";
+      for (var i = 0; i < numGw; i++) {
+        if (numGw > 12 && i % Math.ceil(numGw / 12) !== 0 && i !== numGw - 1) continue;
+        xLabels +=
+          '<text x="' + xAt(i) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10" fill="var(--text-muted)" font-family="IBM Plex Mono, monospace">GW' + (i + 1) + "</text>";
+      }
+
+      var paths = series
+        .map(function (s, si) {
+          var line = "";
+          if (s.length > 1) {
+            var d = s
+              .map(function (v, i) { return (i === 0 ? "M" : "L") + xAt(i) + "," + yAt(v); })
+              .join(" ");
+            line = '<path d="' + d + '" fill="none" stroke="' + colors[si] + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />';
+          }
+          var lastIdx = s.length - 1;
+          var endpoint =
+            '<circle cx="' + xAt(lastIdx) + '" cy="' + yAt(s[lastIdx]) + '" r="4.5" fill="' + colors[si] + '" stroke="var(--surface)" stroke-width="1.5" />';
+          return line + endpoint;
+        })
+        .join("");
+
+      // invisible hover targets, one per gameweek column
+      var hoverCols = "";
+      for (var hi = 0; hi < numGw; hi++) {
+        hoverCols +=
+          '<rect data-gwidx="' + hi + '" x="' + (xAt(hi) - plotW / Math.max(numGw, 1) / 2) + '" y="' + padT + '" width="' + (plotW / Math.max(numGw, 1)) + '" height="' + plotH + '" fill="transparent" class="hover-col" />';
+      }
+
+      body.innerHTML =
+        legend +
+        '<div class="chart-svg-wrap">' +
+        '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="xMidYMid meet" style="display:block;width:100%;height:auto" id="chart-svg">' +
+        gridLines +
+        paths +
+        xLabels +
+        '<g id="hover-marks"></g>' +
+        hoverCols +
+        "</svg>" +
+        '<div class="chart-tooltip" id="chart-tooltip"></div>' +
+        "</div>";
+
+      var svg = document.getElementById("chart-svg");
+      var tooltip = document.getElementById("chart-tooltip");
+      var hoverMarks = document.getElementById("hover-marks");
+      var wrap = body.querySelector(".chart-svg-wrap");
+
+      function showTip(idx) {
+        var rows = board
+          .map(function (row, si) {
+            return (
+              '<div class="tt-row"><span><span class="tt-dot" style="background:' +
+              colors[si] +
+              '"></span>' +
+              esc(row.team_name) +
+              '</span><span class="tt-val">' +
+              fmtNum(series[si][idx]) +
+              "</span></div>"
+            );
+          })
+          .join("");
+        tooltip.innerHTML = '<div class="tt-gw">Gameweek ' + (idx + 1) + "</div>" + rows;
+        tooltip.classList.add("visible");
+
+        var pt = svg.createSVGPoint();
+        pt.x = xAt(idx);
+        pt.y = padT;
+        var ctm = svg.getScreenCTM();
+        var screenPt = pt.matrixTransform(ctm);
+        var wrapRect = wrap.getBoundingClientRect();
+        var left = screenPt.x - wrapRect.left;
+        var maxLeft = wrapRect.width - 150;
+        tooltip.style.left = Math.min(Math.max(left - 65, 0), Math.max(maxLeft, 0)) + "px";
+        tooltip.style.top = "4px";
+
+        hoverMarks.innerHTML =
+          '<line x1="' + xAt(idx) + '" y1="' + padT + '" x2="' + xAt(idx) + '" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />' +
+          series
+            .map(function (s, si) {
+              return '<circle cx="' + xAt(idx) + '" cy="' + yAt(s[idx]) + '" r="4" fill="' + colors[si] + '" stroke="var(--surface)" stroke-width="1.5" />';
+            })
+            .join("");
+      }
+      function hideTip() {
+        tooltip.classList.remove("visible");
+        hoverMarks.innerHTML = "";
+      }
+      svg.querySelectorAll(".hover-col").forEach(function (rect) {
+        rect.addEventListener("mouseenter", function () { showTip(parseInt(rect.getAttribute("data-gwidx"), 10)); });
+        rect.addEventListener("mouseleave", hideTip);
+      });
+    }
+
+    card.querySelectorAll(".chart-toggle-btn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        card.querySelectorAll(".chart-toggle-btn").forEach(function (bb) {
+          bb.setAttribute("aria-selected", bb === b ? "true" : "false");
+        });
+        draw(b.getAttribute("data-mode"));
+      });
+    });
+
+    draw(MODES[0].key);
+  })();
+
+  // ---------- Gameweek cards ----------
+  (function renderGws() {
+    var mount = document.getElementById("gw-list");
+    var gws = DATA.gameweeks || []; // most recent first
+    if (!gws.length) {
+      mount.innerHTML = '<div class="empty-note">No gameweeks played yet.</div>';
+      return;
+    }
+
+    function buildPanel(gw, isDefault) {
+      var statusHtml = gw.is_live
+        ? '<span class="status-pill live"><span class="live-dot"></span>Live</span>'
+        : gw.finished
+        ? '<span class="status-pill done">Full time</span>'
+        : '<span class="status-pill done">Upcoming</span>';
+
+      var rows = gw.entries
+        .map(function (e, i) {
+          var medalClass = i === 0 ? "m1" : "";
+          var chip = e.chip ? '<span class="chip-tag">' + esc(e.chip) + "</span>" : "";
+          var capText = e.captain ? '<span class="cap-tag"><b>' + esc(e.captain) + "</b> (C)</span>" : "";
+          // Cash is only ever shown once the gameweek has actually finished -
+          // a live GW's leader hasn't won anything yet.
+          var cashCell = gw.finished
+            ? (e.cash_prize ? '<span class="cash-tag">' + fmtRM(e.cash_prize) + "</span>" : "—")
+            : '<span style="color:var(--text-muted)">TBD</span>';
           return (
-            '<div class="legend-item"><span class="legend-swatch" style="background:' +
-            colors[i] +
-            '"></span>' +
-            esc(row.team_name) +
-            "</div>"
+            "<tr>" +
+            '<td><span class="medal ' + medalClass + '">' + ordinal(i + 1) + "</span></td>" +
+            '<td><span class="team-name">' + esc(e.team_name) + "</span>" + chip + '<span class="manager-name">' + esc(e.manager_name) + "</span></td>" +
+            '<td class="num">' + esc(e.gw_points) + "</td>" +
+            '<td class="num tourney-pts">+' + fmtNum(e.tournament_points) + "</td>" +
+            '<td class="num">' + cashCell + "</td>" +
+            '<td class="num">' + esc(e.points_on_bench) + "</td>" +
+            "<td>" + capText + "</td>" +
+            "</tr>"
+          );
+        })
+        .join("");
+
+      var ff = gw.fun_facts || {};
+      var facts = [];
+      if (ff.best_player) {
+        facts.push({
+          label: "Star Performer",
+          value:
+            "<b>" + esc(ff.best_player.name) + "</b> — " + esc(ff.best_player.points) + " pts" +
+            (ff.best_player.captained ? " (captained)" : "") +
+            " for " + esc(ff.best_player.team),
+        });
+      }
+      if (ff.best_captain) {
+        facts.push({
+          label: "Best Captain Pick",
+          value: "<b>" + esc(ff.best_captain.name) + "</b> — " + esc(ff.best_captain.points) + " pts for " + esc(ff.best_captain.team),
+        });
+      }
+      if (ff.top_differential) {
+        facts.push({
+          label: "Top Differential",
+          value: "<b>" + esc(ff.top_differential.name) + "</b> — " + esc(ff.top_differential.points) + " pts, owned only by " + esc(ff.top_differential.team),
+        });
+      }
+      if (ff.most_popular_captain) {
+        facts.push({
+          label: "Most Popular Captain",
+          value: "<b>" + esc(ff.most_popular_captain.name) + "</b> — captained by " + esc(ff.most_popular_captain.count) + " of " + board.length + " managers",
+        });
+      }
+      if (ff.closest_margin) {
+        facts.push({
+          label: "Closest Margin",
+          value:
+            "<b>" + esc(ff.closest_margin.leader) + "</b> edged " + esc(ff.closest_margin.chaser) +
+            " by just " + esc(ff.closest_margin.gap) + " pt" + (ff.closest_margin.gap === 1 ? "" : "s"),
+        });
+      }
+      if (ff.worst_starter) {
+        facts.push({
+          label: "Biggest Bust",
+          value: "<b>" + esc(ff.worst_starter.name) + "</b> — " + esc(ff.worst_starter.points) + " pts for " + esc(ff.worst_starter.team),
+        });
+      }
+      if (ff.biggest_bench_waste) {
+        facts.push({
+          label: "Biggest Bench Waste",
+          value: "<b>" + esc(ff.biggest_bench_waste.team) + "</b> left " + esc(ff.biggest_bench_waste.points) + " pts on the bench",
+        });
+      }
+      if (ff.hits_taken && ff.hits_taken.length) {
+        facts.push({
+          label: "Transfer Hits Taken",
+          value: ff.hits_taken.map(function (h) { return "<b>" + esc(h.team) + "</b> (&minus;" + esc(h.cost) + ")"; }).join(", "),
+        });
+      }
+      var factsHtml = facts.length
+        ? '<div class="facts-row">' +
+          facts.map(function (f) { return '<div class="fact-chip"><div class="fact-label">' + esc(f.label) + '</div><div class="fact-value">' + f.value + "</div></div>"; }).join("") +
+          "</div>"
+        : "";
+
+      return (
+        '<div class="gw-panel" data-gwpanel="' + gw.gw + '"' + (isDefault ? "" : " hidden") + ">" +
+        '<div class="gw-panel-head"><span class="gw-num">Gameweek ' + gw.gw + "</span>" + statusHtml + "</div>" +
+        '<table class="gw-table"><thead><tr>' +
+        '<th>Rank</th><th>Team</th><th class="num">GW Pts</th><th class="num">Tournament</th><th class="num">Cash</th><th class="num">Bench</th><th>Captain</th>' +
+        "</tr></thead><tbody>" +
+        rows +
+        "</tbody></table>" +
+        factsHtml +
+        "</div>"
+      );
+    }
+
+    var mostRecentGw = gws[0].gw;
+    var chronological = gws.slice().reverse(); // GW1..GWn, left-to-right tab order
+    var tabsHtml =
+      '<div class="gw-tabs" role="tablist">' +
+      chronological
+        .map(function (gw) {
+          var dot = gw.is_live ? '<span class="gw-tab-dot"></span>' : "";
+          return (
+            '<button class="gw-tab-btn" data-gw="' + gw.gw + '" role="tab" aria-selected="' +
+            (gw.gw === mostRecentGw ? "true" : "false") + '">' + dot + "GW" + gw.gw + "</button>"
           );
         })
         .join("") +
       "</div>";
 
-    // cumulative series
-    var series = board.map(function (row) {
-      var cum = 0;
-      return row.gw_history.map(function (v) {
-        cum += v;
-        return cum;
+    var panelsHtml = gws.map(function (gw) { return buildPanel(gw, gw.gw === mostRecentGw); }).join("");
+
+    mount.innerHTML = '<div class="gw-card">' + tabsHtml + '<div class="gw-panels">' + panelsHtml + "</div></div>";
+
+    function selectGw(n) {
+      mount.querySelectorAll(".gw-tab-btn").forEach(function (b) {
+        b.setAttribute("aria-selected", b.getAttribute("data-gw") === String(n) ? "true" : "false");
       });
+      mount.querySelectorAll(".gw-panel").forEach(function (p) {
+        p.hidden = p.getAttribute("data-gwpanel") !== String(n);
+      });
+    }
+    mount.querySelectorAll(".gw-tab-btn").forEach(function (b) {
+      b.addEventListener("click", function () { selectGw(b.getAttribute("data-gw")); });
     });
-    var maxY = Math.max.apply(null, series.map(function (s) { return s[s.length - 1]; }).concat([1]));
-
-    var W = 1000, H = 300, padL = 34, padR = 16, padT = 16, padB = 30;
-    var plotW = W - padL - padR, plotH = H - padT - padB;
-    function xAt(i) { return numGw === 1 ? padL + plotW / 2 : padL + (i / (numGw - 1)) * plotW; }
-    function yAt(v) { return padT + plotH - (v / maxY) * plotH; }
-
-    var gridLines = "";
-    var ySteps = 4;
-    for (var g = 0; g <= ySteps; g++) {
-      var val = (maxY / ySteps) * g;
-      var y = yAt(val);
-      gridLines +=
-        '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="var(--border-soft)" stroke-width="1" />' +
-        '<text x="' + (padL - 8) + '" y="' + (y + 3) + '" text-anchor="end" font-size="10" fill="var(--text-muted)" font-family="IBM Plex Mono, monospace">' + Math.round(val) + "</text>";
-    }
-    var xLabels = "";
-    for (var i = 0; i < numGw; i++) {
-      if (numGw > 12 && i % Math.ceil(numGw / 12) !== 0 && i !== numGw - 1) continue;
-      xLabels +=
-        '<text x="' + xAt(i) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10" fill="var(--text-muted)" font-family="IBM Plex Mono, monospace">GW' + (i + 1) + "</text>";
-    }
-
-    var paths = series
-      .map(function (s, si) {
-        var line = "";
-        if (s.length > 1) {
-          var d = s
-            .map(function (v, i) { return (i === 0 ? "M" : "L") + xAt(i) + "," + yAt(v); })
-            .join(" ");
-          line = '<path d="' + d + '" fill="none" stroke="' + colors[si] + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />';
-        }
-        var lastIdx = s.length - 1;
-        var endpoint =
-          '<circle cx="' + xAt(lastIdx) + '" cy="' + yAt(s[lastIdx]) + '" r="4.5" fill="' + colors[si] + '" stroke="var(--surface)" stroke-width="1.5" />';
-        return line + endpoint;
-      })
-      .join("");
-
-    // invisible hover targets, one per gameweek column
-    var hoverCols = "";
-    for (var hi = 0; hi < numGw; hi++) {
-      hoverCols +=
-        '<rect data-gwidx="' + hi + '" x="' + (xAt(hi) - plotW / Math.max(numGw, 1) / 2) + '" y="' + padT + '" width="' + (plotW / Math.max(numGw, 1)) + '" height="' + plotH + '" fill="transparent" class="hover-col" />';
-    }
-
-    card.innerHTML =
-      legend +
-      '<div class="chart-svg-wrap">' +
-      '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="xMidYMid meet" style="display:block;width:100%;height:auto" id="chart-svg">' +
-      gridLines +
-      paths +
-      xLabels +
-      '<g id="hover-marks"></g>' +
-      hoverCols +
-      "</svg>" +
-      '<div class="chart-tooltip" id="chart-tooltip"></div>' +
-      "</div>";
-
-    var svg = document.getElementById("chart-svg");
-    var tooltip = document.getElementById("chart-tooltip");
-    var hoverMarks = document.getElementById("hover-marks");
-    var wrap = card.querySelector(".chart-svg-wrap");
-
-    function showTip(idx, evt) {
-      var rows = board
-        .map(function (row, si) {
-          return (
-            '<div class="tt-row"><span><span class="tt-dot" style="background:' +
-            colors[si] +
-            '"></span>' +
-            esc(row.team_name) +
-            '</span><span class="tt-val">' +
-            fmtNum(series[si][idx]) +
-            "</span></div>"
-          );
-        })
-        .join("");
-      tooltip.innerHTML = '<div class="tt-gw">Gameweek ' + (idx + 1) + "</div>" + rows;
-      tooltip.classList.add("visible");
-
-      var pt = svg.createSVGPoint();
-      pt.x = xAt(idx);
-      pt.y = padT;
-      var ctm = svg.getScreenCTM();
-      var screenPt = pt.matrixTransform(ctm);
-      var wrapRect = wrap.getBoundingClientRect();
-      var left = screenPt.x - wrapRect.left;
-      var maxLeft = wrapRect.width - 150;
-      tooltip.style.left = Math.min(Math.max(left - 65, 0), Math.max(maxLeft, 0)) + "px";
-      tooltip.style.top = "4px";
-
-      hoverMarks.innerHTML =
-        '<line x1="' + xAt(idx) + '" y1="' + padT + '" x2="' + xAt(idx) + '" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,3" />' +
-        series
-          .map(function (s, si) {
-            return '<circle cx="' + xAt(idx) + '" cy="' + yAt(s[idx]) + '" r="4" fill="' + colors[si] + '" stroke="var(--surface)" stroke-width="1.5" />';
-          })
-          .join("");
-    }
-    function hideTip() {
-      tooltip.classList.remove("visible");
-      hoverMarks.innerHTML = "";
-    }
-    svg.querySelectorAll(".hover-col").forEach(function (rect) {
-      rect.addEventListener("mouseenter", function () { showTip(parseInt(rect.getAttribute("data-gwidx"), 10)); });
-      rect.addEventListener("mouseleave", hideTip);
-    });
-  })();
-
-  // ---------- Gameweek cards ----------
-  (function renderGws() {
-    var list = document.getElementById("gw-list");
-    var gws = DATA.gameweeks || [];
-    if (!gws.length) {
-      list.innerHTML = '<div class="empty-note">No gameweeks played yet.</div>';
-      return;
-    }
-    list.innerHTML = gws
-      .map(function (gw, idx) {
-        var statusHtml = gw.is_live
-          ? '<span class="status-pill live"><span class="live-dot"></span>Live</span>'
-          : gw.finished
-          ? '<span class="status-pill done">Full time</span>'
-          : '<span class="status-pill done">Pending</span>';
-
-        var rows = gw.entries
-          .map(function (e, i) {
-            var medalClass = i === 0 ? "m1" : "";
-            var chip = e.chip ? '<span class="chip-tag">' + esc(e.chip) + "</span>" : "";
-            var capText = e.captain ? '<span class="cap-tag"><b>' + esc(e.captain) + "</b> (C)</span>" : "";
-            return (
-              "<tr>" +
-              '<td><span class="medal ' + medalClass + '">' + ordinal(i + 1) + "</span></td>" +
-              '<td><span class="team-name">' + esc(e.team_name) + "</span>" + chip + '<span class="manager-name">' + esc(e.manager_name) + "</span></td>" +
-              '<td class="num">' + esc(e.gw_points) + "</td>" +
-              '<td class="num tourney-pts">+' + fmtNum(e.tournament_points) + "</td>" +
-              '<td class="num">' + (e.cash_prize ? '<span class="cash-tag">' + fmtRM(e.cash_prize) + "</span>" : "—") + "</td>" +
-              '<td class="num">' + esc(e.points_on_bench) + "</td>" +
-              "<td>" + capText + "</td>" +
-              "</tr>"
-            );
-          })
-          .join("");
-
-        var ff = gw.fun_facts || {};
-        var facts = [];
-        if (ff.best_player) {
-          facts.push({
-            label: "Star Performer",
-            value:
-              "<b>" + esc(ff.best_player.name) + "</b> — " + esc(ff.best_player.points) + " pts" +
-              (ff.best_player.captained ? " (captained)" : "") +
-              " for " + esc(ff.best_player.team),
-          });
-        }
-        if (ff.top_differential) {
-          facts.push({
-            label: "Top Differential",
-            value: "<b>" + esc(ff.top_differential.name) + "</b> — " + esc(ff.top_differential.points) + " pts, owned only by " + esc(ff.top_differential.team),
-          });
-        }
-        if (ff.biggest_bench_waste) {
-          facts.push({
-            label: "Biggest Bench Waste",
-            value: "<b>" + esc(ff.biggest_bench_waste.team) + "</b> left " + esc(ff.biggest_bench_waste.points) + " pts on the bench",
-          });
-        }
-        var factsHtml = facts.length
-          ? '<div class="facts-row">' +
-            facts.map(function (f) { return '<div class="fact-chip"><div class="fact-label">' + esc(f.label) + '</div><div class="fact-value">' + f.value + "</div></div>"; }).join("") +
-            "</div>"
-          : "";
-
-        return (
-          '<details class="gw-card"' + (idx === 0 ? " open" : "") + ">" +
-          "<summary>" +
-          '<div class="gw-head-left"><span class="gw-num">Gameweek ' + gw.gw + "</span>" + statusHtml + "</div>" +
-          '<span class="gw-toggle-icon">&#9656;</span>' +
-          "</summary>" +
-          '<div class="gw-body">' +
-          '<table class="gw-table"><thead><tr>' +
-          '<th>Rank</th><th>Team</th><th class="num">GW Pts</th><th class="num">Tournament</th><th class="num">Cash</th><th class="num">Bench</th><th>Captain</th>' +
-          "</tr></thead><tbody>" +
-          rows +
-          "</tbody></table>" +
-          factsHtml +
-          "</div>" +
-          "</details>"
-        );
-      })
-      .join("");
   })();
 
   // ---------- Rules & Prizes ----------
@@ -1045,7 +1161,11 @@
     var el = document.getElementById("rules-content");
     var prizes = DATA.prizes || {};
     var fplStandings = DATA.fpl_league_standings || [];
-    var latestGw = (DATA.gameweeks || [])[0];
+    // Winners/cash are only ever credited for gameweeks that have actually
+    // finished (see fetch_data.py) - a still-live GW's leader is not a winner
+    // yet, so the "this gameweek's winners" callout looks at the most recent
+    // *finished* GW, not just the most recent one.
+    var latestFinishedGw = (DATA.gameweeks || []).filter(function (g) { return g.finished; })[0];
 
     function medalEmoji(pos) {
       return pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : "";
@@ -1058,6 +1178,22 @@
       '<div class="prize-lede-stat"><div class="prize-lede-value">' + fmtRM(prizes.weekly_pot_per_player) + '</div><div class="prize-lede-label">Weekly Pot Each / GW</div></div>' +
       '<div class="prize-lede-stat"><div class="prize-lede-value total">' + fmtRM(prizes.total_season_prize_money) + '</div><div class="prize-lede-label">Total Season Prize Money</div></div>' +
       "</div>";
+
+    var scoring = DATA.scoring_table || {};
+    var scoringRows = Object.keys(scoring)
+      .map(function (k) {
+        return (
+          '<div class="scoring-row"><span class="scoring-rank">' +
+          esc(k) +
+          '</span><span class="scoring-pts">' +
+          esc(scoring[k]) +
+          " pt" + (scoring[k] === 1 ? "" : "s") +
+          "</span></div>"
+        );
+      })
+      .join("");
+    var scoringCard =
+      '<div class="scoring-card" style="margin-top:14px"><h3>Weekly Scoring — Points by Position</h3>' + scoringRows + "</div>";
 
     function liveRows(standings, amountKey) {
       return standings
@@ -1081,17 +1217,17 @@
       '<div class="prize-live"><div class="prize-live-label">Current Pace</div>' + liveRows(fplStandings, "prize") + "</div>" +
       "</div>";
 
-    var weeklyLiveRows = latestGw
-      ? latestGw.entries
+    var weeklyLiveRows = latestFinishedGw
+      ? latestFinishedGw.entries
           .filter(function (e) { return e.cash_prize > 0; })
           .map(function (e) {
             return (
               '<div class="prize-live-row"><span class="who">' + esc(e.team_name) +
-              ' <span class="m">GW' + latestGw.gw + "</span></span><span class=\"amt\">" + fmtRM(e.cash_prize) + "</span></div>"
+              ' <span class="m">GW' + latestFinishedGw.gw + "</span></span><span class=\"amt\">" + fmtRM(e.cash_prize) + "</span></div>"
             );
           })
           .join("")
-      : "";
+      : '<div class="prize-live-row"><span class="who m">No gameweek finished yet</span></div>';
 
     var weeklyCard =
       '<div class="prize-card">' +
@@ -1101,9 +1237,9 @@
       '<div class="prize-row"><span>🥈 2nd Highest GW Score</span><span class="amt">' + fmtRM(prizes.weekly_prizes[1]) + "</span></div>" +
       '<div class="prize-row"><span>🏦 To F1 Championship Pool</span><span class="amt">' + fmtRM(prizes.f1_pool_contribution_per_gw) + "</span></div>" +
       '<div class="prize-pool-total"><span>Over 38 GWs</span><span>' + fmtRM(prizes.weekly_cash_pool_total) + " paid</span></div>" +
-      (weeklyLiveRows
-        ? '<div class="prize-live"><div class="prize-live-label">This Gameweek&rsquo;s Winners</div>' + weeklyLiveRows + "</div>"
-        : "") +
+      '<div class="prize-live"><div class="prize-live-label">' +
+      (latestFinishedGw ? "GW" + latestFinishedGw.gw + " Winners" : "Winners") +
+      "</div>" + weeklyLiveRows + "</div>" +
       "</div>";
 
     var f1Card =
@@ -1132,7 +1268,7 @@
       "Every Gameweek matters. Even if your overall season is gone, there&rsquo;s still weekly money and the F1 Championship to fight for. 😂⚽<br /><br />" +
       "<strong>May the best manager win. 🏆</strong></div>";
 
-    el.innerHTML = lede + '<div class="prize-grid">' + fplCard + weeklyCard + f1Card + "</div>" + breakdown + tagline;
+    el.innerHTML = lede + scoringCard + '<div class="prize-grid">' + fplCard + weeklyCard + f1Card + "</div>" + breakdown + tagline;
   })();
 
   // ---------- Tabs ----------

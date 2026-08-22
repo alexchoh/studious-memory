@@ -173,10 +173,12 @@ def main():
     gameweeks = []
     season_totals = {e["entry_id"]: 0.0 for e in entries}
     season_gw_points = {e["entry_id"]: [] for e in entries}  # tournament pts per gw
+    season_fpl_points = {e["entry_id"]: [] for e in entries}  # raw FPL pts per gw
     season_wins = {e["entry_id"]: 0 for e in entries}
     season_cash = {e["entry_id"]: 0.0 for e in entries}
 
     for gw in played_events:
+        gw_finished = finished_map.get(gw, False)
         scores = []
         for entry in entries:
             eid = entry["entry_id"]
@@ -216,7 +218,9 @@ def main():
             )
             season_totals[eid] += tourney_points[eid]
             season_gw_points[eid].append(tourney_points[eid])
-            season_cash[eid] += cash_prizes[eid]
+            season_fpl_points[eid].append(pts)
+            if gw_finished:
+                season_cash[eid] += cash_prizes[eid]
 
             # captain / vice captain names
             for p in entry_picks.get("picks", []) or []:
@@ -228,15 +232,18 @@ def main():
                 if p.get("is_vice_captain"):
                     gw_entries[-1]["vice_captain"] = el["web_name"]
 
-        # winner(s) of this GW = whoever's tournament_points == max
-        top_score = max(tourney_points.values())
-        winners = [
-            e["team_name"] for e in gw_entries if e["tournament_points"] == top_score
-        ]
-        for w_name in winners:
-            for e in entries:
-                if e["team_name"] == w_name:
-                    season_wins[e["entry_id"]] += 1 / len(winners)
+        # winner(s) of this GW = whoever's tournament_points == max - only
+        # credited once the gameweek has actually finished, never projected
+        # from a still-live score.
+        if gw_finished:
+            top_score = max(tourney_points.values())
+            winners = [
+                e["team_name"] for e in gw_entries if e["tournament_points"] == top_score
+            ]
+            for w_name in winners:
+                for e in entries:
+                    if e["team_name"] == w_name:
+                        season_wins[e["entry_id"]] += 1 / len(winners)
 
         # --- fun facts for this GW ---
         live = live_by_event.get(gw, {}).get("elements", [])
@@ -244,13 +251,20 @@ def main():
 
         # highest individual scorer across all 5 squads
         best_player = None  # (points, web_name, owner_team, is_captain)
+        worst_starter = None  # (points, web_name, owner_team)
+        best_captain = None  # (points, web_name, owner_team)
         bench_waste = None  # (team_name, bench_points)
         differentials = []  # players owned by exactly one of the 5 squads
         owned_count = {}
+        captain_counts = {}  # web_name -> number of teams captaining them
         for entry in entries:
             entry_picks = picks[entry["entry_id"]].get(gw, {})
             for p in entry_picks.get("picks", []) or []:
                 owned_count[p["element"]] = owned_count.get(p["element"], 0) + 1
+                if p.get("is_captain"):
+                    el = elements_by_id.get(p["element"])
+                    if el:
+                        captain_counts[el["web_name"]] = captain_counts.get(el["web_name"], 0) + 1
 
         for entry in entries:
             eid = entry["entry_id"]
@@ -270,10 +284,16 @@ def main():
                             entry["team_name"],
                             p.get("is_captain", False),
                         )
+                    if worst_starter is None or effective_pts < worst_starter[0]:
+                        worst_starter = (effective_pts, el["web_name"], entry["team_name"])
                     if owned_count.get(p["element"]) == 1 and raw_pts >= 5:
                         differentials.append(
                             (raw_pts, el["web_name"], entry["team_name"])
                         )
+                if p.get("is_captain") and (
+                    best_captain is None or effective_pts > best_captain[0]
+                ):
+                    best_captain = (effective_pts, el["web_name"], entry["team_name"])
 
             bench_pts = entry["history_current"].get(gw, {}).get("points_on_bench")
             if bench_pts is not None and (
@@ -282,6 +302,27 @@ def main():
                 bench_waste = (entry["team_name"], bench_pts)
 
         differentials.sort(key=lambda x: -x[0])
+
+        top_captain_count = max(captain_counts.values()) if captain_counts else 0
+        popular_captains = [
+            name for name, count in captain_counts.items() if count == top_captain_count
+        ]
+
+        hits_taken = [
+            {"team": e["team_name"], "cost": e["transfer_cost"]}
+            for e in gw_entries
+            if e.get("transfer_cost")
+        ]
+
+        closest_margin = (
+            {
+                "gap": round(ordered[0][1] - ordered[1][1], 2),
+                "leader": gw_entries[0]["team_name"],
+                "chaser": gw_entries[1]["team_name"],
+            }
+            if len(ordered) >= 2
+            else None
+        )
 
         fun_facts = {
             "best_player": (
@@ -292,6 +333,16 @@ def main():
                     "captained": best_player[3],
                 }
                 if best_player
+                else None
+            ),
+            "worst_starter": (
+                {"points": worst_starter[0], "name": worst_starter[1], "team": worst_starter[2]}
+                if worst_starter
+                else None
+            ),
+            "best_captain": (
+                {"points": best_captain[0], "name": best_captain[1], "team": best_captain[2]}
+                if best_captain
                 else None
             ),
             "biggest_bench_waste": (
@@ -308,6 +359,13 @@ def main():
                 if differentials
                 else None
             ),
+            "most_popular_captain": (
+                {"name": popular_captains[0], "count": top_captain_count}
+                if len(popular_captains) == 1 and top_captain_count > 1
+                else None
+            ),
+            "closest_margin": closest_margin,
+            "hits_taken": hits_taken,
         }
 
         gameweeks.append(
@@ -337,6 +395,7 @@ def main():
                 "manager_name": entry["manager_name"],
                 "tournament_points": round(season_totals[eid], 2),
                 "gw_history": season_gw_points[eid],
+                "fpl_gw_history": season_fpl_points[eid],
                 "gw_wins": round(season_wins[eid], 2),
                 "fpl_total_points": overall_total,
                 "chips_used": [c["name"] for c in entry.get("chips_used", [])],
