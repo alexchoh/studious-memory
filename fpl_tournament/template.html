@@ -279,7 +279,14 @@
     box-shadow: var(--shadow);
     overflow-x: auto;
   }
-  table { border-collapse: collapse; width: 100%; min-width: 640px; }
+  table { border-collapse: collapse; width: 100%; }
+  /* Only the wide, many-column tables need a min-width - and only inside a
+     container that scrolls locally (.board, .gw-card both have
+     overflow-x: auto). A bare `table` selector previously forced this
+     640px minimum onto every table on the page, including the small
+     2-column prize breakdown table, which had nowhere to scroll and blew
+     out the whole page horizontally instead. */
+  #board-table, .gw-table { min-width: 640px; }
   thead th {
     text-align: left;
     font-family: "IBM Plex Mono", monospace;
