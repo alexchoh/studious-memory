@@ -84,6 +84,27 @@ def fetch_gw_dependent(name, url, finished):
     return data
 
 
+def compute_live_points(entry_picks, live_by_pid):
+    """Sum each pick's live element points x multiplier - this is what FPL's
+    own live rankings show. entry_history.points (from the history/picks
+    endpoints) is NOT truly live: FPL only recomputes it periodically, so
+    during a live match it visibly lags the true in-play score (observed:
+    entry_history.points showing 22 while the real live total, summed from
+    /event/{gw}/live/ element stats, was already 29). Returns None if no
+    picks are available (e.g. the entry hasn't been fetched for this GW),
+    so the caller can fall back to entry_history.points."""
+    picks_list = entry_picks.get("picks") or []
+    if not picks_list:
+        return None
+    total = 0
+    for p in picks_list:
+        stats = live_by_pid.get(p["element"])
+        if not stats:
+            continue
+        total += stats.get("total_points", 0) * p.get("multiplier", 0)
+    return total
+
+
 def split_pot(gw_scores, payout_table):
     """gw_scores: list of (entry_id, points). Returns {entry_id: share of
     payout_table}, splitting evenly across ties (e.g. two teams tied for
@@ -117,9 +138,6 @@ def main():
         current_event = finished[-1] if finished else 1
     finished_map = {e["id"]: e["finished"] for e in events}
     deadline_map = {e["id"]: e["deadline_time"] for e in events}
-    last_completed_event = max(
-        [e["id"] for e in events if e["finished"]], default=0
-    )
 
     print(f"Current event: {current_event}", file=sys.stderr)
 
@@ -179,13 +197,19 @@ def main():
 
     for gw in played_events:
         gw_finished = finished_map.get(gw, False)
+        live_elements = live_by_event.get(gw, {}).get("elements", [])
+        live_by_pid = {el["id"]: el["stats"] for el in live_elements}
+
         scores = []
         for entry in entries:
             eid = entry["entry_id"]
             hist = entry["history_current"].get(gw)
             if hist is None:
                 continue
-            scores.append((eid, hist["points"]))
+            entry_picks = picks[eid].get(gw, {})
+            live_pts = compute_live_points(entry_picks, live_by_pid)
+            pts = live_pts if live_pts is not None else hist["points"]
+            scores.append((eid, pts))
         if not scores:
             continue
 
@@ -246,8 +270,7 @@ def main():
                         season_wins[e["entry_id"]] += 1 / len(winners)
 
         # --- fun facts for this GW ---
-        live = live_by_event.get(gw, {}).get("elements", [])
-        live_by_pid = {el["id"]: el["stats"] for el in live}
+        # live_by_pid was already built above, from the same live_by_event[gw] data.
 
         # highest individual scorer across all 5 squads
         best_player = None  # (points, web_name, owner_team, is_captain)
@@ -383,11 +406,12 @@ def main():
     leaderboard = []
     for entry in entries:
         eid = entry["entry_id"]
-        gw_hist = entry["history_current"]
-        overall_total = gw_hist.get(current_event, {}).get(
-            "total_points",
-            gw_hist.get(last_completed_event, {}).get("total_points", 0),
-        )
+        # Season-cumulative total, built from the same live-corrected per-GW
+        # points as everything else here - entry_history's own total_points
+        # field has the same lag as its per-GW points (see
+        # compute_live_points), so summing our own numbers keeps this
+        # consistent with the live gameweek figures shown elsewhere.
+        overall_total = sum(season_fpl_points[eid])
         leaderboard.append(
             {
                 "entry_id": eid,
