@@ -16,8 +16,20 @@ Published dashboard: https://claude.ai/code/artifact/ab306cf8-ea32-472e-8d04-c92
   `cache/` so a refresh only re-fetches the live/in-progress gameweek.
 - `render.py` injects `data.json` into `template.html`, producing the final
   self-contained `dashboard.html` that gets published as the Claude Artifact.
-- A Routine re-runs both scripts and republishes the artifact roughly hourly
-  so the dashboard stays current while a gameweek is live.
+- `schedule_next.py` looks at live fixture state and decides when the next
+  refresh should happen, persisting a little state in `refresh_state.json`:
+  - a match is live right now → check again in **10 minutes**
+  - a gameweek's last fixture just finished → **one final check 2 hours
+    later** (to catch confirmed bonus points, price changes, etc.)
+  - mid-gameweek lull (some fixtures played, more to come, nothing live) →
+    back off, but never longer than ~3 hours, and always in time for the
+    next kickoff
+  - gameweek fully wrapped up → back off to **daily** checks, ramping back
+    up to a tighter cadence as the next gameweek's kickoff approaches
+- A self-rescheduling Routine ties it together: each firing runs
+  `fetch_data.py` → `render.py` → republishes the artifact → runs
+  `schedule_next.py` → reschedules its own next firing via
+  `update_trigger(run_once_at=...)` with whatever that script printed.
 
 ## Manual refresh
 
