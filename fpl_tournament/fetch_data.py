@@ -22,7 +22,22 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = os.path.join(HERE, "cache")
 OUT_PATH = os.path.join(HERE, "data.json")
 
-RANK_POINTS = [10, 7, 5, 2, 1]  # 1st .. 5th
+RANK_POINTS = [10, 7, 5, 2, 1]  # 1st .. 5th tournament points
+CASH_TABLE = [20, 10, 0, 0, 0]  # 1st .. 5th weekly cash prize (RM)
+
+PRIZES = {
+    "season_entry_per_player": 200,
+    "weekly_pot_per_player": 10,
+    "total_season_prize_money": 2900,
+    "fpl_league_pool": 700,
+    "fpl_league_prizes": [500, 200],  # champion, runner-up (by raw FPL points)
+    "f1_championship_pool": 1060,
+    "f1_championship_prizes": [550, 310, 200],  # champion, runner-up, third
+    "weekly_prizes": [20, 10],  # highest / 2nd highest GW score
+    "weekly_pool_per_gw": 50,
+    "f1_pool_contribution_per_gw": 20,
+    "weekly_cash_pool_total": 1140,
+}
 
 session = requests.Session()
 session.headers.update({"User-Agent": "Mozilla/5.0 (fpl-tournament-dashboard)"})
@@ -69,10 +84,10 @@ def fetch_gw_dependent(name, url, finished):
     return data
 
 
-def rank_and_score(gw_scores):
-    """gw_scores: list of (entry_id, points). Returns {entry_id: tournament_points},
-    splitting points evenly across ties (e.g. two teams tied for 2nd/3rd each
-    get (7+5)/2 = 6)."""
+def split_pot(gw_scores, payout_table):
+    """gw_scores: list of (entry_id, points). Returns {entry_id: share of
+    payout_table}, splitting evenly across ties (e.g. two teams tied for
+    2nd/3rd of a [10,7,5,2,1] table each get (7+5)/2 = 6)."""
     ordered = sorted(gw_scores, key=lambda x: -x[1])
     result = {}
     i = 0
@@ -81,7 +96,7 @@ def rank_and_score(gw_scores):
         while j < len(ordered) and ordered[j][1] == ordered[i][1]:
             j += 1
         group = ordered[i:j]
-        share = sum(RANK_POINTS[i:j]) / len(group)
+        share = sum(payout_table[i:j]) / len(group)
         for entry_id, _pts in group:
             result[entry_id] = share
         i = j
@@ -159,6 +174,7 @@ def main():
     season_totals = {e["entry_id"]: 0.0 for e in entries}
     season_gw_points = {e["entry_id"]: [] for e in entries}  # tournament pts per gw
     season_wins = {e["entry_id"]: 0 for e in entries}
+    season_cash = {e["entry_id"]: 0.0 for e in entries}
 
     for gw in played_events:
         scores = []
@@ -171,7 +187,8 @@ def main():
         if not scores:
             continue
 
-        tourney_points = rank_and_score(scores)
+        tourney_points = split_pot(scores, RANK_POINTS)
+        cash_prizes = split_pot(scores, CASH_TABLE)
         ordered = sorted(scores, key=lambda x: -x[1])
 
         gw_entries = []
@@ -186,6 +203,7 @@ def main():
                     "manager_name": entry["manager_name"],
                     "gw_points": pts,
                     "tournament_points": tourney_points[eid],
+                    "cash_prize": cash_prizes[eid],
                     "overall_rank": hist.get("overall_rank"),
                     "points_on_bench": hist.get("points_on_bench"),
                     "transfers": hist.get("event_transfers"),
@@ -198,6 +216,7 @@ def main():
             )
             season_totals[eid] += tourney_points[eid]
             season_gw_points[eid].append(tourney_points[eid])
+            season_cash[eid] += cash_prizes[eid]
 
             # captain / vice captain names
             for p in entry_picks.get("picks", []) or []:
@@ -321,10 +340,36 @@ def main():
                 "gw_wins": round(season_wins[eid], 2),
                 "fpl_total_points": overall_total,
                 "chips_used": [c["name"] for c in entry.get("chips_used", [])],
+                "weekly_cash_won": round(season_cash[eid], 2),
             }
         )
     leaderboard.sort(key=lambda x: (-x["tournament_points"], -x["fpl_total_points"]))
     for idx, row in enumerate(leaderboard):
+        row["position"] = idx + 1
+    f1_scores = [(row["entry_id"], row["tournament_points"]) for row in leaderboard]
+    f1_prize_table = PRIZES["f1_championship_prizes"] + [0] * len(entries)
+    f1_prize_shares = split_pot(f1_scores, f1_prize_table)
+    for row in leaderboard:
+        row["f1_prize"] = f1_prize_shares[row["entry_id"]]
+
+    # --- FPL League standings (raw FPL total points, separate prize) -----
+    fpl_league_scores = [(row["entry_id"], row["fpl_total_points"]) for row in leaderboard]
+    fpl_league_prize_table = PRIZES["fpl_league_prizes"] + [0] * len(entries)
+    fpl_league_prize_shares = split_pot(fpl_league_scores, fpl_league_prize_table)
+    fpl_league_standings = sorted(
+        (
+            {
+                "entry_id": row["entry_id"],
+                "team_name": row["team_name"],
+                "manager_name": row["manager_name"],
+                "fpl_total_points": row["fpl_total_points"],
+                "prize": fpl_league_prize_shares[row["entry_id"]],
+            }
+            for row in leaderboard
+        ),
+        key=lambda x: -x["fpl_total_points"],
+    )
+    for idx, row in enumerate(fpl_league_standings):
         row["position"] = idx + 1
 
     data = {
@@ -335,6 +380,7 @@ def main():
         "current_event_finished": finished_map.get(current_event, False),
         "total_events": len(events),
         "leaderboard": leaderboard,
+        "fpl_league_standings": fpl_league_standings,
         "gameweeks": list(reversed(gameweeks)),  # most recent first
         "scoring_table": {
             "1st": RANK_POINTS[0],
@@ -343,6 +389,7 @@ def main():
             "4th": RANK_POINTS[3],
             "5th": RANK_POINTS[4],
         },
+        "prizes": PRIZES,
     }
 
     with open(OUT_PATH, "w") as f:

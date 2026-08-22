@@ -490,6 +490,134 @@
   a { color: var(--accent-strong); }
 
   .empty-note { padding: 24px; text-align: center; color: var(--text-muted); font-size: 14px; }
+
+  /* ---------- Tabs ---------- */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+  }
+  .tab-btn {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 10px 4px 12px;
+    cursor: pointer;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 22px;
+  }
+  .tab-btn:hover { color: var(--text-primary); }
+  .tab-btn[aria-selected="true"] { color: var(--text-primary); }
+  .tab-btn[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* ---------- Rules & Prizes ---------- */
+  .prize-lede {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 22px;
+    box-shadow: var(--shadow);
+    margin-bottom: 6px;
+  }
+  .prize-lede-stat { text-align: left; }
+  .prize-lede-value {
+    font-family: "Teko", system-ui, sans-serif;
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .prize-lede-value.total { color: var(--gold); }
+  .prize-lede-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-top: 2px; }
+
+  .prize-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0; }
+  @media (max-width: 760px) { .prize-grid { grid-template-columns: 1fr; } }
+  .prize-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+  }
+  .prize-card-title {
+    font-family: "Teko", system-ui, sans-serif;
+    font-size: 21px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    margin-bottom: 2px;
+  }
+  .prize-card-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+  .prize-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 13.5px;
+  }
+  .prize-row:last-of-type { border-bottom: none; }
+  .prize-row .amt { font-family: "IBM Plex Mono", monospace; font-weight: 600; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .prize-pool-total { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; }
+  .prize-live {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-soft);
+  }
+  .prize-live-label { font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .prize-live-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 3px 0; }
+  .prize-live-row .who { color: var(--text-primary); font-weight: 500; }
+  .prize-live-row .who .m { color: var(--text-muted); font-weight: 400; font-size: 11.5px; }
+  .prize-live-row .amt { font-family: "IBM Plex Mono", monospace; color: var(--gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .cash-tag {
+    display: inline-flex;
+    align-items: center;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--gold);
+    background: var(--gold-wash);
+    padding: 2px 6px;
+    border-radius: 5px;
+    margin-left: 6px;
+  }
+
+  .prize-breakdown-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .prize-breakdown-table td { padding: 8px 4px; font-size: 13.5px; border-bottom: 1px solid var(--border-soft); }
+  .prize-breakdown-table tr:last-child td { border-bottom: none; font-weight: 600; }
+  .prize-breakdown-table td.amt { text-align: right; font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+
+  .prize-tagline {
+    text-align: center;
+    padding: 26px 20px;
+    color: var(--text-secondary);
+    font-size: 14.5px;
+    line-height: 1.8;
+  }
+  .prize-tagline strong { color: var(--text-primary); }
 </style>
 
 <div class="wrap">
@@ -504,29 +632,44 @@
     </div>
   </header>
 
-  <section id="hero-section"></section>
+  <nav class="tabs" role="tablist">
+    <button class="tab-btn" data-tab="leaderboard" role="tab" aria-selected="true">🏆 Leaderboard</button>
+    <button class="tab-btn" data-tab="rules" role="tab" aria-selected="false">💰 Rules &amp; Prizes</button>
+  </nav>
 
-  <div class="section-head">
-    <h2>Season Leaderboard</h2>
-    <span class="section-sub">Accumulated tournament points across all gameweeks</span>
-  </div>
-  <div class="board"><table id="board-table"></table></div>
+  <div id="panel-leaderboard" class="tab-panel">
+    <section id="hero-section"></section>
 
-  <div class="section-head">
-    <h2>Season Progression</h2>
-    <span class="section-sub">Cumulative tournament points by gameweek</span>
-  </div>
-  <div class="chart-card" id="chart-card"></div>
+    <div class="section-head">
+      <h2>F1 Championship — Season Leaderboard</h2>
+      <span class="section-sub">Accumulated tournament points across all gameweeks</span>
+    </div>
+    <div class="board"><table id="board-table"></table></div>
 
-  <div class="section-head">
-    <h2>Gameweek by Gameweek</h2>
-    <span class="section-sub">Most recent first</span>
+    <div class="section-head">
+      <h2>Season Progression</h2>
+      <span class="section-sub">Cumulative tournament points by gameweek</span>
+    </div>
+    <div class="chart-card" id="chart-card"></div>
+
+    <div class="section-head">
+      <h2>Gameweek by Gameweek</h2>
+      <span class="section-sub">Most recent first</span>
+    </div>
+    <div id="gw-list"></div>
   </div>
-  <div id="gw-list"></div>
+
+  <div id="panel-rules" class="tab-panel" hidden>
+    <div class="section-head" style="margin-top:28px">
+      <h2>Rules &amp; Prizes</h2>
+      <span class="section-sub">No Guestlist League — FPL 2026/27</span>
+    </div>
+    <div id="rules-content"></div>
+  </div>
 
   <footer>
     <span>Source data: official Fantasy Premier League API, league <span id="foot-league-id"></span>.</span>
-    <span>Auto-refreshes roughly every hour while gameweeks are live.</span>
+    <span>Auto-refreshes every 10 minutes during live matches, backing off between gameweeks.</span>
   </footer>
 </div>
 
@@ -551,6 +694,11 @@
     if (n === null || n === undefined) return "-";
     var r = Math.round(n * 100) / 100;
     return r % 1 === 0 ? String(r) : r.toFixed(2);
+  }
+  function fmtRM(n) {
+    if (!n) return "RM0";
+    var r = Math.round(n * 100) / 100;
+    return "RM" + (r % 1 === 0 ? String(r) : r.toFixed(2));
   }
   function fmtDate(iso) {
     if (!iso) return "-";
@@ -631,7 +779,7 @@
     var head =
       "<thead><tr>" +
       '<th>#</th><th>Team</th><th class="num">Form</th>' +
-      '<th class="num">GW Wins</th><th class="num">FPL Pts</th><th class="num">Tournament Pts</th>' +
+      '<th class="num">GW Wins</th><th class="num">FPL Pts</th><th class="num">Tournament Pts</th><th class="num">Cash Won</th>' +
       "</tr></thead>";
 
     var rows = board
@@ -654,6 +802,7 @@
           '<td class="num">' + fmtNum(row.gw_wins) + "</td>" +
           '<td class="num">' + esc(row.fpl_total_points) + "</td>" +
           '<td class="num" style="font-weight:600">' + fmtNum(row.tournament_points) + "</td>" +
+          '<td class="num" style="color:var(--gold)">' + fmtRM(row.weekly_cash_won) + "</td>" +
           "</tr>"
         );
       })
@@ -834,6 +983,7 @@
               '<td><span class="team-name">' + esc(e.team_name) + "</span>" + chip + '<span class="manager-name">' + esc(e.manager_name) + "</span></td>" +
               '<td class="num">' + esc(e.gw_points) + "</td>" +
               '<td class="num tourney-pts">+' + fmtNum(e.tournament_points) + "</td>" +
+              '<td class="num">' + (e.cash_prize ? '<span class="cash-tag">' + fmtRM(e.cash_prize) + "</span>" : "—") + "</td>" +
               '<td class="num">' + esc(e.points_on_bench) + "</td>" +
               "<td>" + capText + "</td>" +
               "</tr>"
@@ -878,7 +1028,7 @@
           "</summary>" +
           '<div class="gw-body">' +
           '<table class="gw-table"><thead><tr>' +
-          '<th>Rank</th><th>Team</th><th class="num">GW Pts</th><th class="num">Tournament</th><th class="num">Bench</th><th>Captain</th>' +
+          '<th>Rank</th><th>Team</th><th class="num">GW Pts</th><th class="num">Tournament</th><th class="num">Cash</th><th class="num">Bench</th><th>Captain</th>' +
           "</tr></thead><tbody>" +
           rows +
           "</tbody></table>" +
@@ -888,6 +1038,118 @@
         );
       })
       .join("");
+  })();
+
+  // ---------- Rules & Prizes ----------
+  (function renderRules() {
+    var el = document.getElementById("rules-content");
+    var prizes = DATA.prizes || {};
+    var fplStandings = DATA.fpl_league_standings || [];
+    var latestGw = (DATA.gameweeks || [])[0];
+
+    function medalEmoji(pos) {
+      return pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : "";
+    }
+
+    var lede =
+      '<div class="prize-lede">' +
+      '<div class="prize-lede-stat"><div class="prize-lede-value">' + board.length + '</div><div class="prize-lede-label">Players</div></div>' +
+      '<div class="prize-lede-stat"><div class="prize-lede-value">' + fmtRM(prizes.season_entry_per_player) + '</div><div class="prize-lede-label">Season Entry Each</div></div>' +
+      '<div class="prize-lede-stat"><div class="prize-lede-value">' + fmtRM(prizes.weekly_pot_per_player) + '</div><div class="prize-lede-label">Weekly Pot Each / GW</div></div>' +
+      '<div class="prize-lede-stat"><div class="prize-lede-value total">' + fmtRM(prizes.total_season_prize_money) + '</div><div class="prize-lede-label">Total Season Prize Money</div></div>' +
+      "</div>";
+
+    function liveRows(standings, amountKey) {
+      return standings
+        .filter(function (s) { return s.position <= 3; })
+        .map(function (s) {
+          return (
+            '<div class="prize-live-row"><span class="who">' + medalEmoji(s.position) + " " + esc(s.team_name) +
+            ' <span class="m">' + esc(s.manager_name) + "</span></span><span class=\"amt\">" + fmtRM(s[amountKey]) + "</span></div>"
+          );
+        })
+        .join("");
+    }
+
+    var fplCard =
+      '<div class="prize-card">' +
+      '<div class="prize-card-title">🏆 FPL League</div>' +
+      '<div class="prize-card-sub">Based on total FPL points after GW38</div>' +
+      '<div class="prize-row"><span>🥇 Champion</span><span class="amt">' + fmtRM(prizes.fpl_league_prizes[0]) + "</span></div>" +
+      '<div class="prize-row"><span>🥈 Runner-Up</span><span class="amt">' + fmtRM(prizes.fpl_league_prizes[1]) + "</span></div>" +
+      '<div class="prize-pool-total"><span>Prize Pool</span><span>' + fmtRM(prizes.fpl_league_pool) + "</span></div>" +
+      '<div class="prize-live"><div class="prize-live-label">Current Pace</div>' + liveRows(fplStandings, "prize") + "</div>" +
+      "</div>";
+
+    var weeklyLiveRows = latestGw
+      ? latestGw.entries
+          .filter(function (e) { return e.cash_prize > 0; })
+          .map(function (e) {
+            return (
+              '<div class="prize-live-row"><span class="who">' + esc(e.team_name) +
+              ' <span class="m">GW' + latestGw.gw + "</span></span><span class=\"amt\">" + fmtRM(e.cash_prize) + "</span></div>"
+            );
+          })
+          .join("")
+      : "";
+
+    var weeklyCard =
+      '<div class="prize-card">' +
+      '<div class="prize-card-title">⚡ Weekly Prizes</div>' +
+      '<div class="prize-card-sub">RM' + esc(prizes.weekly_pool_per_gw) + ' collected every gameweek</div>' +
+      '<div class="prize-row"><span>🥇 Highest GW Score</span><span class="amt">' + fmtRM(prizes.weekly_prizes[0]) + "</span></div>" +
+      '<div class="prize-row"><span>🥈 2nd Highest GW Score</span><span class="amt">' + fmtRM(prizes.weekly_prizes[1]) + "</span></div>" +
+      '<div class="prize-row"><span>🏦 To F1 Championship Pool</span><span class="amt">' + fmtRM(prizes.f1_pool_contribution_per_gw) + "</span></div>" +
+      '<div class="prize-pool-total"><span>Over 38 GWs</span><span>' + fmtRM(prizes.weekly_cash_pool_total) + " paid</span></div>" +
+      (weeklyLiveRows
+        ? '<div class="prize-live"><div class="prize-live-label">This Gameweek&rsquo;s Winners</div>' + weeklyLiveRows + "</div>"
+        : "") +
+      "</div>";
+
+    var f1Card =
+      '<div class="prize-card">' +
+      '<div class="prize-card-title">🏎️ F1 Championship</div>' +
+      '<div class="prize-card-sub">Our own weekly points system — see Leaderboard tab</div>' +
+      '<div class="prize-row"><span>🥇 Champion</span><span class="amt">' + fmtRM(prizes.f1_championship_prizes[0]) + "</span></div>" +
+      '<div class="prize-row"><span>🥈 Runner-Up</span><span class="amt">' + fmtRM(prizes.f1_championship_prizes[1]) + "</span></div>" +
+      '<div class="prize-row"><span>🥉 Third Place</span><span class="amt">' + fmtRM(prizes.f1_championship_prizes[2]) + "</span></div>" +
+      '<div class="prize-pool-total"><span>Prize Pool</span><span>' + fmtRM(prizes.f1_championship_pool) + "</span></div>" +
+      '<div class="prize-live"><div class="prize-live-label">Current Standings</div>' + liveRows(board, "f1_prize") + "</div>" +
+      "</div>";
+
+    var breakdown =
+      '<div class="scoring-card" style="margin-top:4px">' +
+      "<h3>Total Prize Breakdown</h3>" +
+      '<table class="prize-breakdown-table"><tbody>' +
+      '<tr><td>🏆 FPL League</td><td class="amt">' + fmtRM(prizes.fpl_league_pool) + "</td></tr>" +
+      '<tr><td>🏎️ F1 Championship</td><td class="amt">' + fmtRM(prizes.f1_championship_pool) + "</td></tr>" +
+      '<tr><td>⚡ Weekly Cash Prizes</td><td class="amt">' + fmtRM(prizes.weekly_cash_pool_total) + "</td></tr>" +
+      '<tr><td>🔥 Total</td><td class="amt">' + fmtRM(prizes.total_season_prize_money) + "</td></tr>" +
+      "</tbody></table></div>";
+
+    var tagline =
+      '<div class="prize-tagline">Same FPL teams.<br />Three different ways to fight for money.<br /><br />' +
+      "Every Gameweek matters. Even if your overall season is gone, there&rsquo;s still weekly money and the F1 Championship to fight for. 😂⚽<br /><br />" +
+      "<strong>May the best manager win. 🏆</strong></div>";
+
+    el.innerHTML = lede + '<div class="prize-grid">' + fplCard + weeklyCard + f1Card + "</div>" + breakdown + tagline;
+  })();
+
+  // ---------- Tabs ----------
+  (function setupTabs() {
+    var btns = document.querySelectorAll(".tab-btn");
+    function select(name) {
+      btns.forEach(function (b) {
+        b.setAttribute("aria-selected", b.getAttribute("data-tab") === name ? "true" : "false");
+      });
+      document.getElementById("panel-leaderboard").hidden = name !== "leaderboard";
+      document.getElementById("panel-rules").hidden = name !== "rules";
+      if (window.history && history.replaceState) history.replaceState(null, "", "#" + name);
+    }
+    btns.forEach(function (b) {
+      b.addEventListener("click", function () { select(b.getAttribute("data-tab")); });
+    });
+    select(location.hash === "#rules" ? "rules" : "leaderboard");
   })();
 })();
 </script>
