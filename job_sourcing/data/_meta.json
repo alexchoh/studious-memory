@@ -1,0 +1,33 @@
+{
+ "generatedAt": "2026-09-12T03:03:12+00:00",
+ "endpointShape": "post_v2_search_gov",
+ "probeErrors": [],
+ "perQueryNew": {
+  "data analyst": 99,
+  "business analyst": 295,
+  "product manager": 254
+ },
+ "observedRecordKeys": [
+  "address",
+  "categories",
+  "employmentTypes",
+  "flexibleWorkArrangements",
+  "hiringCompany",
+  "job_role_score",
+  "metadata",
+  "positionLevels",
+  "postedCompany",
+  "recency_score",
+  "salary",
+  "schemes",
+  "score",
+  "shiftPattern",
+  "skills",
+  "skills_match_score",
+  "status",
+  "title",
+  "title_match_score",
+  "uuid"
+ ],
+ "count": 630
+}
