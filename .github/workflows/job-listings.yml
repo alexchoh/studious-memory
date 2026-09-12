@@ -1,0 +1,45 @@
+name: Sync job listings
+
+on:
+  schedule:
+    # 01:15 UTC = 09:15 SGT, after the overnight batch of new MCF postings.
+    - cron: '15 1 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'job_sourcing/queries.json'
+      - 'job_sourcing/fetch_listings.py'
+      - '.github/workflows/job-listings.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: job-listings
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Fetch listings from MyCareersFuture
+        run: python job_sourcing/fetch_listings.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add job_sourcing/data/listings.json job_sourcing/data/_meta.json
+          if git diff --staged --quiet; then
+            echo "No listing changes."
+          else
+            COUNT=$(python -c "import json,sys; print(json.load(open('job_sourcing/data/listings.json'))['count'])")
+            git commit -m "Sync MyCareersFuture listings (${COUNT} open roles)"
+            git push
+          fi

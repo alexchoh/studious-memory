@@ -1,0 +1,11 @@
+{
+  "_comment": "Search terms used by fetch_listings.py against MyCareersFuture. Replace these with the set exported from the Sourcing stage of the Job Sourcing page so the pipeline tracks your actual competencies.",
+  "market": "Singapore",
+  "maxPagesPerQuery": 3,
+  "postedWithinDays": 30,
+  "queries": [
+    "data analyst",
+    "business analyst",
+    "product manager"
+  ]
+}
