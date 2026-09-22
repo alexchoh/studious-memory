@@ -288,6 +288,7 @@ input:focus, select:focus, textarea:focus{border-color:var(--accent-2)}
 }
 .score small{display:block; font-size:.625rem; letter-spacing:.08em; text-transform:uppercase;
   font-family:var(--ui); color:var(--faint); margin-top:3px; font-weight:600}
+.qhits{grid-column:1/-1; display:flex; flex-wrap:wrap; gap:4px; margin-top:6px}
 .cov{display:flex; height:4px; border-radius:2px; overflow:hidden; background:var(--surface-3); margin-top:8px; grid-column:1/-1}
 .cov i{display:block; height:100%}
 .cov i.c{background:var(--ok)} .cov i.p{background:var(--warn)} .cov i.g{background:var(--bad-edge)}
@@ -1299,6 +1300,33 @@ function keywordScore(l){
   return {pct: Math.round(hit.length/want.length*100), hit, miss};
 }
 
+/** How one listing sits against the current query: which ranking terms and
+ *  skills it actually contains, and whether an exclusion caught it. Computed
+ *  live so editing the query reorders the list immediately. */
+function queryFit(l){
+  const q = (S.profile && S.profile.query) || null;
+  const empty = {rankHits:[], skillHits:[], excluded:[]};
+  if(!q) return empty;
+  const hay = norm(listingText(l));
+  const has = t => t && hay.indexOf(norm(t)) !== -1;
+  return {
+    rankHits: onTerms(q.rank).filter(has),
+    skillHits: onTerms(q.skills).filter(has),
+    excluded: onTerms(q.exclude).filter(has)
+  };
+}
+/** Listings the query excludes sink to the bottom rather than vanishing —
+ *  a silent drop hides a query that is too aggressive. */
+function rankedListings(){
+  const rows = S.listings.map(l=>{
+    const f = queryFit(l);
+    const base = l.assessment ? l.assessment.score : (l.kw ? l.kw.pct : 0);
+    return {l, f, base, score: (f.excluded.length ? -1000 : 0) + base + f.rankHits.length*6 + f.skillHits.length*2};
+  });
+  rows.sort((a,b)=> b.score - a.score);
+  return rows;
+}
+
 function bestEvidence(reqText, idx){
   const rt = tokens(reqText).filter(t=> !STOP.has(t) && t.length>2);
   if(!rt.length) return {id:null, score:0};
@@ -1843,7 +1871,7 @@ function renderSourcing(){
     '<div class="card-body stack">'+
       qGroupHTML('titles','Job titles','Combined with OR. Use the exact titles Singapore employers post, not your internal job title.')+
       qGroupHTML('skills','Skills','Required group. “Match any” widens; “match all” is precise and will cut results hard.', modeSeg)+
-      qGroupHTML('exclude','Exclusions','Removed from results. The defaults strip the recruitment noise that floods SG analyst searches.')+
+      qGroupHTML('exclude','Exclusions','Dropped by the pipeline, and sunk to the bottom of stage 04 rather than hidden, so a query that is too aggressive stays visible.')+
       qGroupHTML('rank','Ranking terms','Not sent to any board — used to sort listings you load, so a good posting rises without narrowing the search.')+
     '</div></div>';
 
@@ -1999,7 +2027,8 @@ function renderListings(){
   }
 
   h += '<div class="listing-list">';
-  S.listings.forEach(l=>{
+  rankedListings().forEach(row=>{
+    const l = row.l, f = row.f;
     const sel = l.id===S.activeId;
     const sc = l.assessment ? l.assessment.score : (l.kw? l.kw.pct : 0);
     const lab = l.assessment ? 'assessed' : 'keyword';
@@ -2020,6 +2049,11 @@ function renderListings(){
         (l.minYears!=null? '<span class="sep">·</span>'+esc(l.minYears)+'+ yrs':'')+
       '</div></div>'+
       '<div class="score" style="color:var(--'+cls+')">'+sc+'<small>'+lab+'</small></div>'+
+      ((f.rankHits.length || f.excluded.length) ?
+        '<div class="qhits">'+
+          f.rankHits.map(t=>'<span class="chip accent tiny">'+esc(t)+'</span>').join('')+
+          f.excluded.map(t=>'<span class="chip bad tiny">excluded: '+esc(t)+'</span>').join('')+
+        '</div>' : '')+
       cov+'</div>';
   });
   h += '</div>';
