@@ -1,11 +1,11 @@
 {
- "generatedAt": "2026-09-12T03:03:12+00:00",
+ "generatedAt": "2026-09-22T13:37:08+00:00",
  "endpointShape": "post_v2_search_gov",
  "probeErrors": [],
  "perQueryNew": {
-  "data analyst": 99,
-  "business analyst": 295,
-  "product manager": 254
+  "data analyst": 85,
+  "business analyst": 294,
+  "product manager": 239
  },
  "observedRecordKeys": [
   "address",
@@ -29,5 +29,179 @@
   "title_match_score",
   "uuid"
  ],
- "count": 630
+ "count": 615,
+ "countBeforeFilter": 615,
+ "hydrated": 80,
+ "detailShape": "get_v2_jobs_uuid",
+ "detailProbeErrors": [],
+ "sampleRawRecord": {
+  "score": 10.094344,
+  "title_match_score": 4,
+  "job_role_score": 3,
+  "skills_match_score": 0,
+  "recency_score": 1.2,
+  "metadata": {
+   "jobPostId": "MCF-2026-1675620",
+   "updatedAt": "2026-09-22T09:51:01",
+   "newPostingDate": "2026-09-22",
+   "totalNumberJobApplication": 0,
+   "isPostedOnBehalf": false,
+   "isHideSalary": false,
+   "isHideHiringEmployerName": false,
+   "jobDetailsUrl": "https://www.mycareersfuture.gov.sg/job/engineering/data-analyst-lancesoft-089783b4dafddf97885d01430cd6bd2b"
+  },
+  "address": {
+   "overseasCountry": null,
+   "foreignAddress1": null,
+   "foreignAddress2": null,
+   "block": "20",
+   "street": "CECIL STREET",
+   "floor": null,
+   "unit": null,
+   "building": "PLUS",
+   "postalCode": "049705",
+   "isOverseas": false,
+   "districts": [
+    {
+     "id": 1,
+     "location": "D01 Marina, Raffles Place, People's Park, Cecil",
+     "region": "Central",
+     "sectors": [
+      "01",
+      "02",
+      "03",
+      "04",
+      "05",
+      "06"
+     ],
+     "regionId": "Central"
+    }
+   ],
+   "lat": 1.28305868511021,
+   "lng": 103.85047428531
+  },
+  "hiringCompany": null,
+  "positionLevels": [
+   {
+    "id": 2,
+    "position": "Middle Management"
+   }
+  ],
+  "schemes": [],
+  "flexibleWorkArrangements": [
+   {
+    "id": 1,
+    "flexibleWorkArrangement": "Flexi-Hours"
+   }
+  ],
+  "salary": {
+   "minimum": 20000,
+   "maximum": 22000,
+   "type": {
+    "salaryType": "Monthly"
+   }
+  },
+  "postedCompany": {
+   "uen": "201905750D",
+   "name": "LANCESOFT PTE. LTD.",
+   "logoFileName": "987c447d9b4a04a802f5fc9d5e5251b6/lancesoft.jpg",
+   "logoUploadPath": "https://static.mycareersfuture.gov.sg/images/company/logos/987c447d9b4a04a802f5fc9d5e5251b6/lancesoft.jpg",
+   "responsiveEmployer": {
+    "isResponsive": false
+   }
+  },
+  "skills": [
+   {
+    "skill": "Tableau",
+    "uuid": "020982e25cf5c16928fcf3c24a2058aa"
+   },
+   {
+    "skill": "Data Quality Checks",
+    "uuid": "08d81cdf263cd40bd3dccfb7474ab7cc"
+   },
+   {
+    "skill": "Dashboards",
+    "uuid": "0ba8adc53c16a6ffe145978e834b02f8"
+   },
+   {
+    "skill": "Business Data Analysis",
+    "uuid": "10e120a38bd3eae27b2e46ddc3e48972"
+   },
+   {
+    "skill": "Microsoft Azure",
+    "uuid": "1668ca1bd914c1d847f23b491319ac91"
+   },
+   {
+    "skill": "Microsoft Excel",
+    "uuid": "28392dee72b88a917a72357aea20a3a5"
+   },
+   {
+    "skill": "Analytics and Reporting Services",
+    "uuid": "28b7337968f9ca994c1f3296124e1328"
+   },
+   {
+    "skill": "Data Analysis",
+    "uuid": "323d6a1348df47d3174f578e1eff00eb"
+   },
+   {
+    "skill": "Collaboration",
+    "uuid": "337e8f4aa741ef97ec3ed8fd7b1accb7"
+   },
+   {
+    "skill": "Business Insights",
+    "uuid": "368af88e8e26ebf639cecb333876f6f2"
+   },
+   {
+    "skill": "Data Management",
+    "uuid": "568483e9bd85504f3c9dcef24ecd3235"
+   },
+   {
+    "skill": "Business Requirement Analysis",
+    "uuid": "8abf0c1e15cabffff21342bbf0a49e00"
+   },
+   {
+    "skill": "Tango",
+    "uuid": "99ec9c94e5ac28a2574e5d166870c240"
+   },
+   {
+    "skill": "Statistics",
+    "uuid": "c33e404a441c6ba9648f88af3c68a1ca"
+   },
+   {
+    "skill": "GCP",
+    "uuid": "c731f72e1d22a7c5e01a7cb789a8885e"
+   },
+   {
+    "skill": "Data Science",
+    "uuid": "c78e2ad97b328dbafbd49edf182136f3"
+   },
+   {
+    "skill": "Analytical Reporting",
+    "uuid": "d7f5bfe65fd89e5d415467fd85d8465f"
+   },
+   {
+    "skill": "Data Validation",
+    "uuid": "fad2be1d58f5622cb4dbb3c18242ddb9"
+   }
+  ],
+  "employmentTypes": [
+   {
+    "id": 7,
+    "employmentType": "Permanent"
+   }
+  ],
+  "categories": [
+   {
+    "id": 11,
+    "category": "Engineering"
+   }
+  ],
+  "shiftPattern": null,
+  "uuid": "089783b4dafddf97885d01430cd6bd2b",
+  "title": "data analyst",
+  "status": {
+   "id": "102",
+   "jobStatus": "Open"
+  }
+ }
 }
