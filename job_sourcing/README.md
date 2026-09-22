@@ -7,12 +7,66 @@ Two halves that work together:
 | `index.html` | The **Resume Provenance Desk** page — resume analysis, query building, fit scoring, and cited drafting | Published as a Claude Artifact |
 | `fetch_listings.py` + workflow | A daily pull of **real** job listings from the MyCareersFuture public API | GitHub Actions |
 
+## Searching Indeed from the page
+
+The page now searches Indeed directly, through the viewer's own claude.ai
+connector. This is the single outbound channel an artifact has: it cannot
+`fetch`, but the `mcp` capability lets it call a connector the viewer installed,
+and that call goes through the Claude host rather than the page's network.
+
+Requires the **Indeed** connector connected in claude.ai. Without it the page
+says so and the button is not shown.
+
+Both tool shapes were observed from real calls before any code was written:
+
+| Tool | Input | Returns |
+|---|---|---|
+| `search_jobs` | `search`, `location`, `country_code`, `job_type?` | one markdown string, 10 jobs, **no descriptions** |
+| `get_job_details` | `job_id` | markdown with the full description |
+
+Three properties of that API drive the design:
+
+1. **`job_id` is positional** (`JOBSEARCH_3`) and scoped to the most recent
+   search, so descriptions are fetched immediately after each search, before
+   the next one renumbers them.
+2. **The apply URL is a fresh tracking link on every call** — the same job came
+   back as `aancjklz7zvl` then `aa4fhrtqlj7m` — so it cannot be a dedupe key.
+   Title plus company is used instead.
+3. **Ten results per call**, so the page issues one search per job title and
+   merges, the same fan-out the phrase-only boards get.
+
+Whether Indeed honours boolean through this API is **not established** — the
+schema calls the field "job title or keywords". So the page sends a plain
+title per call for maximum recall and applies your skills and exclusions
+locally, exactly as the MyCareersFuture pipeline does. Exclusions are applied
+before a description is fetched, so detail calls are not spent on noise.
+
+A listing whose description could not be read is marked `summary only`, because
+fit scoring on those has nothing but the title and company to work from. It is
+never given invented text.
+
+## Why the repository pipeline still exists
+
+Indeed and MyCareersFuture do not cover the same ground, and only one of them
+supplies structured data:
+
+- **Indeed** — broad aggregation including agency reposts; on demand; no
+  structured skill tags.
+- **MyCareersFuture** — the government bank, more complete for roles covered by
+  the Fair Consideration Framework, and it tags every listing with
+  employer-chosen skill terms. Those tags are what the vocabulary miner counts.
+
+Keep both. The connector answers "what is open right now"; the pipeline gives
+depth and the keyword corpus.
+
 ## Why it is split this way
 
-A published artifact cannot make any outbound network request — the content
-security policy blocks `fetch`, `XHR` and WebSockets to every host, and Claude
-running inside the page has no web access either. So a page of this kind
-**cannot crawl job boards**, and any page that appears to is fabricating.
+A published artifact cannot make any outbound network request of its own — the
+content security policy blocks `fetch`, `XHR` and WebSockets to every host, and
+Claude running inside the page has no web access either. The only way out is a
+connector the viewer has installed (see above). For every board without a
+connector, the page still cannot crawl, and any page that appears to is
+fabricating.
 
 Rather than pretend otherwise, sourcing is split:
 

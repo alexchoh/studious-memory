@@ -791,12 +791,13 @@ $$('.stage-btn').forEach(b=> b.addEventListener('click', ()=> go(b.dataset.stage
   const use = (window.claude && typeof window.claude.use==='function')
     ? window.claude.use.bind(window.claude) : null;
   if(use){
-    const [a,b,c] = await Promise.all([
+    const [a,b,c,d] = await Promise.all([
       use('sample').catch(()=>null),
       use('db').catch(()=>null),
-      use('downloads').catch(()=>null)
+      use('downloads').catch(()=>null),
+      use('mcp').catch(()=>null)
     ]);
-    sample=a; db=b; downloads=c;
+    sample=a; db=b; downloads=c; mcpNS=d;
   }
   capsReady = true;
   render();
@@ -1935,6 +1936,7 @@ function renderSourcing(){
     '<span class="mono tiny">job_sourcing/queries.json</span>, and the daily run will use it.</p>'+
     '<div class="row" style="margin-top:12px">'+
       '<button class="btn primary" id="btnExportQ" type="button">Export queries.json</button>'+
+      (mcpNS ? '<button class="btn" id="btnGoIndeed" type="button">Search Indeed now</button>' : '')+
       '<button class="btn" id="toListings" type="button">Go to listings</button>'+
     '</div></div>';
 
@@ -1948,6 +1950,8 @@ function wireSourcing(){
   const ex = $('#btnExpand'); if(ex) ex.addEventListener('click', expandQueries);
   const tl = $('#toListings'); if(tl) tl.addEventListener('click', ()=> go('listings'));
   const eq = $('#btnExportQ'); if(eq) eq.addEventListener('click', exportQueries);
+  const gi = $('#btnGoIndeed');
+  if(gi) gi.addEventListener('click', ()=>{ go('listings'); setTimeout(searchIndeed, 80); });
 
   // Delegated handlers bind once; the markup inside is replaced on every edit.
   if(host.dataset.wired) return;
@@ -2003,13 +2007,215 @@ function exportQueries(){
   }, null, 2));
 }
 
+/* ================================================================== *
+ * Indeed, through the viewer's own connector.
+ *
+ * This is the one outbound channel an artifact has: the page cannot
+ * fetch, but it can call a connector the viewer has installed.
+ *
+ * Shapes below were observed from real calls, not guessed:
+ *   search_jobs({search, location, country_code, job_type?})
+ *     -> {result: "<markdown>"} — ten jobs, no descriptions.
+ *   get_job_details({job_id}) -> {result: "<markdown>"} — full description.
+ *
+ * Two quirks drive the design:
+ *  - Job Id is positional ("JOBSEARCH_3"), scoped to the most recent
+ *    search, so details must be fetched before the next search runs.
+ *  - The apply URL is a fresh tracking link on every call, so it cannot
+ *    be a dedupe key. Title + company is used instead.
+ * ================================================================== */
+let mcpNS = null, searchAbort = false;
+
+function payloadText(res){
+  if(typeof res === 'string') return res;
+  const p = res && (res.payload !== undefined ? res.payload : res.structuredContent);
+  if(typeof p === 'string') return p;
+  if(p && typeof p === 'object' && typeof p.result === 'string') return p.result;
+  // Some hosts hand back the connector's object itself rather than wrapping it.
+  if(res && typeof res.result === 'string') return res.result;
+  if(res && Array.isArray(res.content)){
+    const t = res.content.find(c=> c && c.type === 'text');
+    if(t && typeof t.text === 'string'){
+      try{ const j = JSON.parse(t.text); if(j && typeof j.result === 'string') return j.result; }catch(e){}
+      return t.text;
+    }
+  }
+  return '';
+}
+const nz = v => (!v || /^(n\/a|none)$/i.test(v)) ? '' : v;
+
+function parseIndeedSearch(md){
+  const out = [];
+  String(md||'').split(/\n\s*\n(?=\s*\*\*Job Title:\*\*)/).forEach(block=>{
+    const get = label =>{
+      const m = block.match(new RegExp('\\*\\*'+label+':\\*\\*[ \\t]*(.*)'));
+      return m ? m[1].trim() : '';
+    };
+    const title = get('Job Title'); if(!title) return;
+    out.push({
+      title, jobId:get('Job Id'), company:get('Company'), location:nz(get('Location')),
+      posted:nz(get('Posted on')), jobType:nz(get('Job Type')),
+      compensation:nz(get('Compensation')), url:get('View Job URL'), description:''
+    });
+  });
+  return out;
+}
+
+function parseIndeedDetail(md){
+  // Field lines only count inside the leading header block. A description
+  // containing its own **bold:** text must not be mistaken for a field.
+  const lines = String(md||'').split('\n');
+  const fields = {}; let title = '', i = 0, sawField = false;
+  for(; i < lines.length; i++){
+    const ln = lines[i].trim();
+    if(!ln){ if(sawField){ i++; break; } continue; }
+    const h = ln.match(/^###\s*(.+)/);
+    if(h && !title){ title = h[1].trim(); continue; }
+    const f = ln.match(/^\*\*([A-Za-z ]+):\*\*\s*(.*)$/);
+    if(f){ fields[f[1].trim()] = f[2].trim(); sawField = true; continue; }
+    if(sawField) break;
+  }
+  return {
+    title, company: fields['Company']||'', location: nz(fields['Location']||''),
+    posted: nz(fields['Posted on']||''), jobType: nz(fields['Job Type']||''),
+    compensation: nz(fields['Compensation']||''), url: fields['View Job URL']||'',
+    description: lines.slice(i).join('\n').trim()
+  };
+}
+
+function mcpErrorText(e){
+  const c = e && e.code;
+  if(c==='not_granted')        return 'You declined access to the Indeed connector. Reload the page to be asked again.';
+  if(c==='server_not_connected')return 'The Indeed connector is not connected for this view. Connect it in claude.ai settings.';
+  if(c==='server_unavailable') return 'Indeed is temporarily unreachable. Try again shortly.';
+  if(c==='tool_error')         return 'Indeed rejected the search: '+((e&&e.message)||'no detail given');
+  if(c==='cancelled')          return 'Search cancelled.';
+  return (e && e.message) || String(e);
+}
+
+function sameJob(a, b){
+  return norm(a.title)===norm(b.title) && norm(a.company)===norm(b.company);
+}
+
+async function searchIndeed(){
+  const q = ensureQuery();
+  const statusEl = $('#idStatus');
+  const say = html =>{ if(statusEl) statusEl.innerHTML = html; };
+  if(!mcpNS){ say('<div class="note bad">The Indeed connector is not available in this view.</div>'); return; }
+
+  const titles = onTerms(q.titles).slice(0, 4);
+  const skills = onTerms(q.skills), excl = onTerms(q.exclude);
+  if(!titles.length){ say('<div class="note warn">Add at least one job title in stage 03 first.</div>'); return; }
+  const perTitle = Math.max(1, Math.min(6, +(($('#idDepth')||{}).value) || 3));
+
+  searchAbort = false;
+  const btn = $('#btnIndeed'); if(btn) btn.disabled = true;
+  const found = [], skipped = {excluded:0, duplicate:0};
+
+  try{
+    for(let i=0; i<titles.length && !searchAbort; i++){
+      const t = titles[i];
+      say(busy('Searching Indeed for “'+esc(t)+'” — '+(i+1)+' of '+titles.length+'…'));
+      let rows = [];
+      try{
+        const res = await mcpNS.callTool('Indeed','search_jobs',
+          {search:t, location:'Singapore', country_code:'SG'});
+        rows = parseIndeedSearch(payloadText(res));
+      }catch(err){
+        say('<div class="note bad">'+esc(mcpErrorText(err))+'</div>');
+        if(err && err.code==='not_granted') break;
+        continue;
+      }
+
+      // Exclusions are applied before spending a detail call on obvious noise.
+      const keep = rows.filter(r=>{
+        const hay = norm(r.title+' '+r.company);
+        if(excl.some(x=> hay.indexOf(norm(x))!==-1)){ skipped.excluded++; return false; }
+        if(found.some(f=> sameJob(f,r)) || S.listings.some(l=> l.source==='indeed' && sameJob(l,r))){
+          skipped.duplicate++; return false;
+        }
+        return true;
+      });
+
+      // Job Id is scoped to the search just made, so hydrate now.
+      for(let k=0; k<keep.length && k<perTitle && !searchAbort; k++){
+        const r = keep[k];
+        say(busy('Reading “'+esc(r.title.slice(0,46))+'…”'));
+        try{
+          const d = await mcpNS.callTool('Indeed','get_job_details', {job_id:r.jobId});
+          const det = parseIndeedDetail(payloadText(d));
+          if(det.description) r.description = det.description;
+          if(det.url) r.url = det.url;
+          if(det.compensation) r.compensation = det.compensation;
+          r.hydrated = true;
+        }catch(err){ /* keep the summary rather than inventing a description */ }
+      }
+      keep.forEach(r=>{ r.matchedTitle = t; found.push(r); });
+    }
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+
+  if(!found.length){
+    say('<div class="note warn">Nothing came back that survived your exclusions. '+
+        'Widen the titles, or mute an exclusion in stage 03.</div>');
+    return;
+  }
+
+  let added = 0;
+  found.forEach(r=>{
+    const l = {
+      id:'L'+Math.random().toString(36).slice(2,9), addedAt:new Date().toISOString(),
+      status:'interested', source:'indeed', url:r.url, title:r.title, company:r.company,
+      location:r.location, employmentType:r.jobType, seniority:'',
+      salaryText:r.compensation, minYears:null, reqs:[], responsibilities:[],
+      skills:[], description:r.description||'', hydrated:!!r.hydrated, matchedTitle:r.matchedTitle
+    };
+    l.kw = keywordScore(l);
+    S.listings.push(l); added++;
+  });
+  S.activeId = S.activeId || S.listings[0].id;
+  persist(); syncRail(); render();
+
+  const hydrated = found.filter(f=> f.hydrated).length;
+  const note = $('#idStatus');
+  if(note) note.innerHTML = '<div class="note accent"><strong>'+added+' listings from Indeed.</strong> '+
+    hydrated+' with the full description read'+
+    (skipped.excluded ? ', '+skipped.excluded+' dropped by your exclusions' : '')+
+    (skipped.duplicate ? ', '+skipped.duplicate+' already had' : '')+
+    '. Ranked against your query below.'+
+    (hydrated < added ? '<br><span class="small">Listings without a description are marked; fit scoring on those '+
+      'has only the title and company to work from.</span>' : '')+'</div>';
+}
+
 /* ---------------------------- 04 ---------------------------- */
 function renderListings(){
   const host = $('#listingsBody');
   let h = capBanner();
 
+  h += '<div class="card flush" style="margin-bottom:16px"><div class="card-head">'+
+      '<h3>Search Indeed from this page</h3>'+
+      (mcpNS ? '<span class="chip ok tiny">connector live</span>'
+             : '<span class="chip tiny">connector unavailable</span>')+
+    '</div><div class="card-body">'+
+    (mcpNS
+      ? '<p class="small muted" style="margin-bottom:11px">Runs the job titles from your query against Indeed Singapore, '+
+        'reads the full description for the strongest matches, and drops them into the list below \u2014 ready for fit '+
+        'scoring and drafting. Exclusions are applied before a description is fetched, so they are not spent on noise.</p>'+
+        '<div class="row">'+
+          '<button class="btn primary" id="btnIndeed" type="button">Search Indeed</button>'+
+          '<label class="small muted" style="display:flex; gap:6px; align-items:center">read full description for top '+
+            '<select id="idDepth" style="width:auto; padding:4px 7px">'+
+              '<option value="2">2</option><option value="3" selected>3</option><option value="5">5</option>'+
+            '</select> per title</label>'+
+          '<button class="btn ghost sm" id="btnIndeedStop" type="button">Stop</button>'+
+        '</div>'
+      : '<p class="small muted">A published page has no network of its own; it reaches Indeed only through your '+
+        'claude.ai connector. Connect Indeed in claude.ai settings, then reopen this page.</p>')+
+    '<div id="idStatus" style="margin-top:10px"></div></div></div>';
+
   h += '<div class="card" style="margin-bottom:16px"><div class="stack-sm">'+
-    '<label class="field"><span>Paste a posting</span>'+
+    '<label class="field"><span>Or paste a posting</span>'+
     '<textarea id="pasteListing" rows="6" placeholder="Paste the full job description — title, company, responsibilities and requirements."></textarea></label>'+
     '<label class="field"><span>Link (optional)</span><input type="url" id="pasteListingUrl" placeholder="https://www.mycareersfuture.gov.sg/job/…"></label>'+
     '<div class="row">'+
@@ -2047,6 +2253,9 @@ function renderListings(){
         (l.salaryText? '<span class="sep">·</span>'+esc(l.salaryText):'')+
         (l.location? '<span class="sep">·</span>'+esc(l.location):'')+
         (l.minYears!=null? '<span class="sep">·</span>'+esc(l.minYears)+'+ yrs':'')+
+        (l.source==='indeed'? '<span class="sep">·</span>Indeed':'')+
+        (l.source==='mycareersfuture'? '<span class="sep">·</span>MyCareersFuture':'')+
+        (!l.description? ' <span class="chip warn tiny">summary only</span>':'')+
       '</div></div>'+
       '<div class="score" style="color:var(--'+cls+')">'+sc+'<small>'+lab+'</small></div>'+
       ((f.rankHits.length || f.excluded.length) ?
@@ -2110,6 +2319,9 @@ function wireListings(){
   });
   const fi2=$('#feedInput');
   if(fi2) fi2.addEventListener('change', e=>{ const f=e.target.files[0]; if(f) ingestFeed(f); });
+  const bIn=$('#btnIndeed'); if(bIn) bIn.addEventListener('click', searchIndeed);
+  const bSt=$('#btnIndeedStop');
+  if(bSt) bSt.addEventListener('click', ()=>{ searchAbort = true; toast('Stopping after the current request.'); });
   $$('.listing').forEach(el=>{
     const pick = ()=>{ S.activeId = el.dataset.id; persist(); render(); };
     el.addEventListener('click', pick);
