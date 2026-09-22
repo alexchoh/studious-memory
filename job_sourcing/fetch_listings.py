@@ -12,6 +12,11 @@ Design constraints:
 1. The exact endpoint shape is not officially documented and public references
    disagree (GET /v2/jobs vs POST /v2/search, two hostnames). This script probes
    a ranked list of candidates, records which one answered, and reuses it.
+   CONFIRMED 2026-09-12: POST https://api.mycareersfuture.gov.sg/v2/search
+   answers, returning {results:[...]}. The search response carries title,
+   company, skills, categories, salary and dates but NO description - that
+   only comes from the per-job detail endpoint, so listings are hydrated
+   separately below.
 2. It NEVER writes placeholder, sample or synthesised listings. If no candidate
    endpoint answers, it exits non-zero and leaves the previous data untouched.
    A downstream resume tailored against an invented job posting is worse than
@@ -122,6 +127,103 @@ def fetch_shape(shape: str, query: str, page: int, limit: int):
         if name == shape:
             return _request(url, method, body)
     raise RuntimeError(f"unknown shape {shape}")
+
+
+def _detail_candidates(uuid: str):
+    return [
+        ("get_v2_jobs_uuid", f"https://api.mycareersfuture.gov.sg/v2/jobs/{uuid}"),
+        ("get_v2_job_uuid",  f"https://api.mycareersfuture.gov.sg/v2/job/{uuid}"),
+    ]
+
+
+def probe_detail(uuid: str):
+    """Find the per-job detail endpoint. Returns (shape_name, errors)."""
+    errors = []
+    for name, url in _detail_candidates(uuid):
+        try:
+            payload = _request(url, "GET", None)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"{name}: {type(exc).__name__}: {exc}")
+            continue
+        if isinstance(payload, dict) and (payload.get("description") or payload.get("uuid")):
+            print(f"  detail probe OK -> {name}", file=sys.stderr)
+            return name, errors
+        errors.append(f"{name}: 200 but no description/uuid in payload")
+    return None, errors
+
+
+def hydrate(items, shape, limit):
+    """Fetch full descriptions for the first `limit` listings.
+
+    The search endpoint returns summaries only. Fit scoring and drafting need
+    the description, so the ones most likely to be read are filled in. A
+    listing that cannot be hydrated keeps its empty description rather than
+    being given invented text.
+    """
+    done = 0
+    for item in items[:limit]:
+        uuid = item["id"].split(":", 1)[-1]
+        url = dict(_detail_candidates(uuid))[shape]
+        try:
+            rec = _request(url, "GET", None)
+        except Exception:  # noqa: BLE001
+            continue
+        if not isinstance(rec, dict):
+            continue
+        item["description"] = to_text(rec.get("description"))
+        item["requirements"] = to_text(rec.get("otherRequirements"))
+        if rec.get("minimumYearsExperience") is not None:
+            item["minYearsExperience"] = rec.get("minimumYearsExperience")
+        for key, path in (("employmentTypes", ("employmentTypes",)),
+                          ("positionLevels", ("positionLevels",))):
+            vals = names(dig(rec, *path, default=[]))
+            if vals:
+                item[key] = vals
+        sal_min, sal_max = dig(rec, "salary", "minimum"), dig(rec, "salary", "maximum")
+        if sal_min:
+            item["salaryMin"], item["salaryMax"] = sal_min, sal_max
+        districts = names(dig(rec, "address", "districts", default=[]))
+        if districts:
+            item["districts"] = districts
+        item["hydrated"] = True
+        done += 1
+        time.sleep(0.25)
+    return done
+
+
+# --------------------------------------------------------------------------
+# boolean filtering
+#
+# MyCareersFuture has no boolean search syntax - it takes a plain phrase. So
+# the boolean is applied HERE, over a deliberately broad fetch, which is the
+# only way to get real AND/OR/NOT semantics out of this source.
+# --------------------------------------------------------------------------
+
+def _haystack(item) -> str:
+    return norm_text(" ".join(filter(None, [
+        item.get("title"), item.get("company"), item.get("description"),
+        item.get("requirements"), " ".join(item.get("skills") or []),
+        " ".join(item.get("categories") or []),
+    ])))
+
+
+def norm_text(s: str) -> str:
+    return re.sub(r"\s+", " ", str(s or "")).lower()
+
+
+def matches(item, cfg) -> bool:
+    """Apply mustAll / mustAny / exclude from queries.json to one listing."""
+    hay = _haystack(item)
+    for term in cfg.get("exclude") or []:
+        if norm_text(term) in hay:
+            return False
+    must_all = cfg.get("mustAll") or []
+    if must_all and not all(norm_text(t) in hay for t in must_all):
+        return False
+    must_any = cfg.get("mustAny") or []
+    if must_any and not any(norm_text(t) in hay for t in must_any):
+        return False
+    return True
 
 
 # --------------------------------------------------------------------------
@@ -246,6 +348,7 @@ def main() -> int:
     seen: dict[str, dict] = {}
     unknown_keys: set[str] = set()
     per_query: dict[str, int] = {}
+    raw_sample: dict | None = None
 
     for query in queries:
         got = 0
@@ -262,6 +365,8 @@ def main() -> int:
             for rec in results:
                 if isinstance(rec, dict):
                     unknown_keys.update(rec.keys())
+                    if raw_sample is None:
+                        raw_sample = rec
                 item = normalise(rec, query) if isinstance(rec, dict) else None
                 if item and item["id"] not in seen:
                     seen[item["id"]] = item
@@ -290,7 +395,27 @@ def main() -> int:
                 return True
         listings = [i for i in listings if recent(i)]
 
+    before_filter = len(listings)
+    listings = [i for i in listings if matches(i, cfg)]
+    if not listings:
+        print(f"error: all {before_filter} listings were removed by the mustAll / "
+              f"mustAny / exclude rules in queries.json. Nothing written - "
+              f"loosen the rules rather than shipping an empty feed.", file=sys.stderr)
+        return 1
+    print(f"  boolean filter: {before_filter} -> {len(listings)}", file=sys.stderr)
+
     listings.sort(key=lambda i: (i.get("postedDate") or ""), reverse=True)
+
+    hydrated = 0
+    detail_shape, detail_errors = probe_detail(listings[0]["id"].split(":", 1)[-1])
+    if detail_shape:
+        limit = int(cfg.get("hydrateTop", 80))
+        print(f"  hydrating descriptions for top {limit} ...", file=sys.stderr)
+        hydrated = hydrate(listings, detail_shape, limit)
+        print(f"  hydrated {hydrated}", file=sys.stderr)
+    else:
+        print("  no detail endpoint answered; descriptions stay empty",
+              file=sys.stderr)
 
     DATA.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -299,7 +424,9 @@ def main() -> int:
         "source": "mycareersfuture.gov.sg public API",
         "endpointShape": shape,
         "count": len(listings),
+        "hydrated": hydrated,
         "queries": queries,
+        "filter": {k: cfg.get(k) for k in ("mustAll", "mustAny", "exclude") if cfg.get(k)},
         "listings": listings,
     }, indent=1, ensure_ascii=False))
     META_FILE.write_text(json.dumps({
@@ -309,6 +436,13 @@ def main() -> int:
         "perQueryNew": per_query,
         "observedRecordKeys": sorted(unknown_keys),
         "count": len(listings),
+        "countBeforeFilter": before_filter,
+        "hydrated": hydrated,
+        "detailShape": detail_shape,
+        "detailProbeErrors": detail_errors,
+        # Kept so field mappings (salary, position levels) can be corrected
+        # against a real payload instead of guessed at.
+        "sampleRawRecord": raw_sample,
     }, indent=1, ensure_ascii=False))
 
     print(f"wrote {len(listings)} listings to {LISTINGS_FILE}", file=sys.stderr)

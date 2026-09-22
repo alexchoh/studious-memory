@@ -70,32 +70,78 @@ its API is public. Under the Fair Consideration Framework most roles must be
 advertised there before an Employment Pass application, so its coverage of local
 hiring is unusually complete.
 
-### A caveat about the endpoint
+### Endpoint: confirmed
 
-The API is public but undocumented, and published references disagree on its
-shape (`GET /v2/jobs` vs `POST /v2/search`, and two hostnames). The sandbox this
-was written in blocks egress to that domain, **so the working shape was never
-confirmed here.** The script therefore probes a ranked list of candidates,
-records the one that answers in `data/_meta.json`, and reuses it.
+The first Actions run settled it. `POST https://api.mycareersfuture.gov.sg/v2/search`
+answers with `{results: [...]}`, no key, no session — 630 listings across three
+queries on the first run. The probe is retained so a future change fails over
+rather than breaking.
 
-If none answers it **exits non-zero and writes nothing**. It will never emit
-placeholder listings — a resume tailored against an invented posting is worse
-than no listings at all. Check the first Actions run: `_meta.json` records which
-shape worked and the errors from the ones that did not.
+Two things the search endpoint does **not** return, confirmed against the real
+payload: a job **description**, and position levels / districts / minimum years.
+Those come from the per-job detail endpoint, so the script hydrates the top
+`hydrateTop` listings separately. Anything it cannot hydrate keeps an empty
+description rather than being given invented text.
 
-### Changing what is searched
+If nothing answers it **exits non-zero and writes nothing**. It never emits
+placeholder listings. `data/_meta.json` records the working shape, the probe
+errors, and a raw sample record so field mappings can be corrected against
+real data instead of guessed at.
 
-Build the query set in the page's Sourcing stage and export it, or edit
-`queries.json` directly:
+### Boolean search
+
+MyCareersFuture takes a plain phrase — there is no boolean syntax. So the
+pipeline fetches **broadly** on your titles and applies the boolean itself, over
+the results:
 
 ```json
 {
-  "market": "Singapore",
-  "maxPagesPerQuery": 3,
-  "postedWithinDays": 30,
-  "queries": ["data analyst", "business analyst"]
+  "queries":  ["Business Analyst", "Senior Business Analyst"],
+  "mustAny":  ["SQL", "Python", "Tableau"],
+  "exclude":  ["intern", "insurance", "financial consultant"]
 }
 ```
+
+`mustAll` requires every term; `mustAny` requires one; `exclude` drops the
+listing. Matching is over title, company, description, skills and categories.
+Measured on the first real pull: 630 listings → 101 with the skills group → 92
+after exclusions.
+
+If the rules remove everything, the run **fails rather than committing an empty
+feed**, so a too-narrow query is visible instead of silent.
+
+### Query syntax differs by board
+
+The page compiles one query model into whatever each board actually parses.
+Feeding boolean to a board that does not support it returns noise, so `phrase`
+is the default and boolean is only claimed where support is well established:
+
+| Board | Syntax | Result |
+|---|---|---|
+| Indeed SG | full boolean + `title:` field | one precise query |
+| LinkedIn | boolean, no field prefixes | one query, `NOT` for exclusions |
+| All others | phrase only | one plain link **per title** |
+
+### Scheduling
+
+`schedule:` triggers only fire for workflows on the repository's **default
+branch**. While this work sits on a feature branch the daily run will not
+happen — it has only ever run on push. Merging the PR onto the default branch
+starts the daily sync.
+
+### Changing what is searched
+
+Build the query in the page's Sourcing stage and export it — titles, a skills
+group set to match-any or match-all, and exclusions — then commit the file.
+
+The Sourcing stage also **mines the vocabulary of postings you have loaded**.
+MyCareersFuture tags every listing with employer-chosen skill terms; the page
+counts them and splits the result into terms your ledger can evidence and terms
+it cannot. The first set belongs in your query and your resume, in the
+employers' own spelling. The second is either a real skills gap or noise worth
+excluding. On the first pull that was 1,486 distinct terms across 630 listings —
+for "business analyst" in Singapore the top tags were `UAT` (67), `User Stories`
+(57), `Stakeholder Management` (50), `Business Requirement Analysis` (41).
 
 Salary figures are kept as **gross monthly SGD**, the Singapore convention, and
 are not converted to an annual figure.

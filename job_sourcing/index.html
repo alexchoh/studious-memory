@@ -444,6 +444,43 @@ input:focus, select:focus, textarea:focus{border-color:var(--accent-2)}
 }
 </style>
 
+<style>
+/* ---- query builder ---- */
+.qgroup{border-top:1px solid var(--rule); padding-top:14px}
+.qgroup:first-child{border-top:0; padding-top:0}
+.qgroup-head{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap}
+.chip.qchip{padding:0; gap:0; overflow:hidden}
+.qchip .qtog{background:none; border:0; padding:3px 8px; cursor:pointer; color:inherit; font:inherit; font-size:.75rem}
+.qchip .qdel{background:none; border:0; border-left:1px solid var(--rule-strong); padding:3px 7px;
+  cursor:pointer; color:var(--muted); font-size:.8125rem; line-height:1.2}
+.qchip .qdel:hover{background:var(--bad-bg); color:var(--bad)}
+.qchip.off{opacity:.5}
+.qchip.off .qtog{text-decoration:line-through}
+.qsrc{font-size:.5625rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding-right:7px}
+input.qadd{max-width:300px; padding:5px 9px; font-size:.8125rem}
+/* ---- board cards ---- */
+.board-grid{grid-template-columns:repeat(auto-fill,minmax(296px,1fr))}
+.board-card{display:flex; flex-direction:column; gap:7px; padding:13px;
+  border:1px solid var(--rule); border-radius:4px; background:var(--surface)}
+.board-card .bn{font-weight:600; font-size:.875rem; display:flex; justify-content:space-between;
+  gap:8px; align-items:center}
+.board-card .bd{font-size:.75rem; color:var(--muted); line-height:1.45}
+.board-card .bnote{font-size:.6875rem; color:var(--ink-2); background:var(--surface-2);
+  border-radius:2px; padding:5px 7px; line-height:1.4}
+.board-card .bq{font-family:var(--mono); font-size:.6875rem; color:var(--ink-2);
+  background:var(--surface-2); border-radius:2px; padding:6px 7px; overflow-wrap:anywhere;
+  white-space:pre-wrap; max-height:7em; overflow-y:auto; margin-top:auto}
+/* ---- mined vocabulary ---- */
+.vocab-cols{display:grid; grid-template-columns:repeat(auto-fit,minmax(262px,1fr)); gap:22px}
+.chip.vterm{padding:0; gap:0; align-items:stretch}
+.vterm > span:first-child{padding:2px 7px}
+.vterm .vn{padding:2px 6px; opacity:.7; border-left:1px solid currentColor; font-size:.625rem;
+  display:flex; align-items:center}
+.vterm .vadd{background:none; border:0; border-left:1px solid currentColor; padding:2px 8px;
+  cursor:pointer; color:inherit; font-weight:700; font-size:.75rem; line-height:1}
+.vterm .vadd:hover{background:var(--surface)}
+</style>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 
@@ -1074,54 +1111,146 @@ function buildProfile(led){
  * ================================================================== */
 async function expandQueries(){
   const p = S.profile; if(!p) return;
+  ensureQuery();
   const host = $('#queryExpand');
-  if(host) host.innerHTML = busy('Working out adjacent titles used in the Singapore market…');
+  if(host) host.innerHTML = busy('Working out the titles and terms Singapore employers actually post\u2026');
   try{
     const res = await ask(
-      'A candidate in the Singapore job market has held these titles: '+
-      JSON.stringify(p.titlesHeld)+
-      '\nTheir evidenced skills: '+JSON.stringify(p.skills.slice(0,40))+
-      '\nComputed experience: '+(p.years==null?'unknown':p.years+' years')+
-      ' (band: '+p.seniority.band+').\n\n'+
-      'Return ONLY JSON: {"variants":[str],"adjacent":[str],"boolean":str}\n'+
-      '"variants" = up to 8 job titles used by Singapore employers for essentially this same role, '+
-      'including local naming conventions.\n'+
-      '"adjacent" = up to 6 genuinely reachable neighbouring roles given these skills. '+
-      'Do not list aspirational jumps of more than one seniority band.\n'+
-      '"boolean" = one boolean search string combining the strongest title and skill terms with OR/AND, '+
-      'suitable for LinkedIn.\n'+
-      'These are search terms only. Do not assert anything about the candidate.',
+      'A candidate in the SINGAPORE job market has held these titles: '+JSON.stringify(p.titlesHeld)+
+      '\nEvidenced skills: '+JSON.stringify(p.skills.slice(0,40))+
+      '\nComputed experience: '+(p.years==null?'unknown':p.years+' years')+' (band: '+p.seniority.band+').\n\n'+
+      'Return ONLY JSON: {"variants":[str],"adjacent":[str],"skillTerms":[str],"exclude":[str]}\n'+
+      '"variants" - up to 8 EXACT job titles as Singapore employers write them in postings, including local '+
+      'conventions (Executive, Senior Executive, Assistant Manager) and common prefixes. Titles only.\n'+
+      '"adjacent" - up to 5 neighbouring roles genuinely reachable from these skills. No jumps of more than one band.\n'+
+      '"skillTerms" - up to 12 EXACT keywords as they appear in Singapore postings for this role: tool names, '+
+      'methodology names, system names, in the posting spelling (for example "User Acceptance Testing", "Power BI").\n'+
+      '"exclude" - up to 6 terms that reliably mark a posting as irrelevant to this candidate in the Singapore market.\n'+
+      'These are search terms. Assert nothing about the candidate.',
       {modelTier:'default'}
     );
-    p.variants = res.variants||[]; p.adjacent = res.adjacent||[]; p.boolean = res.boolean||'';
+    p.variants = res.variants||[]; p.adjacent = res.adjacent||[];
+    let added = 0;
+    (res.variants||[]).forEach(t=>{ if(addTerm('titles', t, 'variant')) added++; });
+    (res.adjacent||[]).forEach(t=>{ if(addTerm('titles', t, 'variant')) added++; });
+    (res.skillTerms||[]).forEach(t=>{ if(addTerm('skills', t, 'variant')) added++; });
+    (res.exclude||[]).forEach(t=>{ if(addTerm('exclude', t, 'variant')) added++; });
     persist(); render();
+    toast('Added '+added+' terms. Mute anything that does not fit.');
   }catch(err){
     if(host) host.innerHTML = '<div class="note bad">'+esc(askError(err))+'</div>';
   }
 }
 
+/* ================================================================== *
+ * Boards, and what query syntax each one actually accepts.
+ *
+ * Feeding a boolean string to a board that does not parse boolean
+ * returns noise, so the safe default is 'phrase' — a board is only
+ * marked boolean where that support is well established. Phrase boards
+ * get one link per title instead of one mangled query.
+ * ================================================================== */
 const BOARDS = [
-  {n:'MyCareersFuture', d:'The government job bank. Under the Fair Consideration Framework most roles must be advertised here for 14 days before an Employment Pass application, so local coverage is unusually complete.',
+  {n:'MyCareersFuture', syntax:'phrase',
+   d:'The government job bank. Under the Fair Consideration Framework most roles must be advertised here for 14 days before an Employment Pass application, so local coverage is unusually complete.',
+   note:'No boolean syntax. The repository pipeline applies your AND/OR/NOT over a broad fetch instead.',
    u:q=>'https://www.mycareersfuture.gov.sg/search?search='+encodeURIComponent(q)+'&sortBy=new_posting_date&page=0'},
-  {n:'LinkedIn', d:'Best for named hiring managers and referral paths. Link filters to the past week.',
-   u:q=>'https://www.linkedin.com/jobs/search/?keywords='+encodeURIComponent(q)+'&location=Singapore&f_TPR=r604800'},
-  {n:'Indeed SG', d:'Widest aggregation, including agency reposts. Expect duplicates of the same role.',
+  {n:'Indeed SG', syntax:'boolean-full', titleField:true,
+   d:'Widest aggregation, including agency reposts.',
+   note:'Full boolean, plus a title: field that keeps agency spam out of title matches.',
    u:q=>'https://sg.indeed.com/jobs?q='+encodeURIComponent(q)+'&l=Singapore&fromage=7'},
-  {n:'JobStreet SG', d:'Deep in commercial, operations and mid-market employers.',
+  {n:'LinkedIn', syntax:'boolean',
+   d:'Best for named hiring managers and referral paths. Filtered to the past week.',
+   note:'Quotes, AND, OR, NOT and parentheses in the keyword field. No title: field in job search.',
+   u:q=>'https://www.linkedin.com/jobs/search/?keywords='+encodeURIComponent(q)+'&location=Singapore&f_TPR=r604800'},
+  {n:'JobStreet SG', syntax:'phrase',
+   d:'Deep in commercial, operations and mid-market employers.',
    u:q=>'https://sg.jobstreet.com/jobs?keywords='+encodeURIComponent(q)},
-  {n:'NodeFlair', d:'Technology roles, with crowd-sourced salary bands by level.',
+  {n:'NodeFlair', syntax:'phrase',
+   d:'Technology roles, with crowd-sourced salary bands by level.',
    u:q=>'https://nodeflair.com/jobs?keyword='+encodeURIComponent(q)},
-  {n:'Glints', d:'Startups and regional SEA employers; weighted to junior and mid level.',
+  {n:'Glints', syntax:'phrase',
+   d:'Startups and regional SEA employers; weighted to junior and mid level.',
    u:q=>'https://glints.com/sg/opportunities/jobs/explore?keyword='+encodeURIComponent(q)+'&country=SG&locationName=Singapore'},
-  {n:'Careers@Gov', d:'Public service and statutory boards. Not everything here reaches MyCareersFuture.',
+  {n:'Careers@Gov', syntax:'phrase',
+   d:'Public service and statutory boards. Not everything here reaches MyCareersFuture.',
    u:q=>'https://jobs.careers.gov.sg/search?q='+encodeURIComponent(q)},
-  {n:'eFinancialCareers', d:'Banking, asset management, insurance and fintech.',
+  {n:'eFinancialCareers', syntax:'phrase',
+   d:'Banking, asset management, insurance and fintech.',
    u:q=>'https://www.efinancialcareers.sg/jobs?q='+encodeURIComponent(q)+'&location=Singapore'},
-  {n:'Tech in Asia', d:'Regional technology and startup roles across SEA.',
+  {n:'Tech in Asia', syntax:'phrase',
+   d:'Regional technology and startup roles across SEA.',
    u:q=>'https://www.techinasia.com/jobs/search?query='+encodeURIComponent(q)+'&country=Singapore'},
-  {n:'Glassdoor SG', d:'Use as much for pay bands and interview reports as for the listings.',
+  {n:'Glassdoor SG', syntax:'phrase',
+   d:'Use as much for pay bands and interview reports as for the listings.',
    u:q=>'https://www.glassdoor.sg/Job/jobs.htm?sc.keyword='+encodeURIComponent(q)}
 ];
+const SYNTAX_LABEL = {'boolean-full':'full boolean + title:', 'boolean':'boolean', 'phrase':'phrase only'};
+
+/* ---------- the query model ---------- */
+const DEFAULT_EXCLUDE = ['intern','internship','traineeship','insurance agent','financial consultant'];
+function newQuery(led, profile){
+  return {
+    titles:(profile.titlesHeld||[]).filter(Boolean).map(t=>({term:t, src:'held', on:true})),
+    skills:(led.skills||[]).slice(0,8).map(s=>({term:s.name, src:'ledger', on:true})),
+    exclude:DEFAULT_EXCLUDE.map(t=>({term:t, src:'default', on:true})),
+    rank:[], skillMode:'any'
+  };
+}
+const onTerms = list => (list||[]).filter(t=>t.on).map(t=>t.term).filter(Boolean);
+const quoteTerm = s => /\s/.test(s) ? '"'+s+'"' : s;
+
+/** Compile the query model into what one particular board will parse.
+ *  Phrase boards get an array of plain queries, one per title. */
+function compileFor(board, q){
+  const titles = onTerms(q.titles), skills = onTerms(q.skills), excl = onTerms(q.exclude);
+  if(board.syntax === 'phrase'){
+    const tail = skills.length ? ' '+skills[0] : '';
+    const base = titles.length ? titles : (skills.length ? [skills[0]] : []);
+    return base.slice(0,5).map(t=> (t+(titles.length?tail:'')).trim()).filter(Boolean);
+  }
+  const parts = [];
+  if(titles.length){
+    const g = '('+titles.map(quoteTerm).join(' OR ')+')';
+    parts.push(board.titleField ? 'title:'+g : g);
+  }
+  if(skills.length){
+    parts.push('('+skills.map(quoteTerm).join(q.skillMode==='all' ? ' AND ' : ' OR ')+')');
+  }
+  let out = parts.join(' AND ');
+  if(excl.length){
+    out += ' '+excl.map(e=> board.syntax==='boolean-full' ? '-'+quoteTerm(e) : 'NOT '+quoteTerm(e)).join(' ');
+  }
+  return [out.trim()].filter(Boolean);
+}
+
+/* ---------- vocabulary mined from real postings ---------- */
+/** Count the exact terms employers tag on the listings you have loaded, and
+ *  mark which ones your ledger can actually evidence. */
+function mineVocabulary(){
+  const counts = new Map();
+  S.listings.forEach(l=>{
+    const terms = [].concat(l.skills||[], (l.reqs||[]).map(r=>r.text||''));
+    const seen = new Set();
+    terms.forEach(raw=>{
+      const t = String(raw||'').trim();
+      if(!t || t.length>48 || seen.has(t.toLowerCase())) return;
+      seen.add(t.toLowerCase());
+      const e = counts.get(t.toLowerCase()) || {term:t, n:0};
+      e.n++; counts.set(t.toLowerCase(), e);
+    });
+  });
+  const mine = new Set();
+  const idx = citableIndex();
+  Object.keys(idx).forEach(k=> tokens(idx[k].text).forEach(t=> mine.add(t)));
+  ((S.ledger&&S.ledger.skills)||[]).forEach(s=> tokens(s.name).forEach(t=> mine.add(t)));
+  const out = Array.from(counts.values());
+  out.forEach(e=>{
+    const tk = tokens(e.term);
+    e.evidenced = tk.length>0 && tk.every(t=> mine.has(t));
+  });
+  return out.sort((a,b)=> b.n-a.n);
+}
 
 /* ================================================================== *
  * Stage 04 — listings
@@ -1655,69 +1784,195 @@ function renderLedger(){
 }
 
 /* ---------------------------- 03 ---------------------------- */
+function ensureQuery(){
+  if(!S.profile) return null;
+  if(!S.profile.query) S.profile.query = newQuery(S.ledger||{}, S.profile);
+  const q = S.profile.query;
+  ['titles','skills','exclude','rank'].forEach(k=>{ if(!Array.isArray(q[k])) q[k]=[]; });
+  if(!q.skillMode) q.skillMode = 'any';
+  return q;
+}
+function addTerm(group, term, src){
+  const q = ensureQuery(); if(!q || !term) return false;
+  const t = String(term).trim(); if(!t) return false;
+  if((q[group]||[]).some(x=> x.term.toLowerCase()===t.toLowerCase())) return false;
+  q[group].push({term:t, src:src||'manual', on:true});
+  return true;
+}
+function qGroupHTML(key, label, help, extra){
+  const q = ensureQuery();
+  let h = '<div class="qgroup"><div class="qgroup-head"><span class="eyebrow">'+label+'</span>'+(extra||'')+'</div>'+
+          '<div class="tiny muted">'+help+'</div><div class="chips" style="margin:9px 0 8px">';
+  (q[key]||[]).forEach((t,i)=>{
+    h += '<span class="chip qchip'+(t.on?'':' off')+'" data-g="'+key+'" data-i="'+i+'">'+
+         '<button type="button" class="qtog" title="'+(t.on?'Mute this term':'Use this term')+'">'+esc(t.term)+'</button>'+
+         (t.src==='variant' ? '<span class="qsrc">suggested</span>' : '')+
+         (t.src==='posting' ? '<span class="qsrc">posting</span>' : '')+
+         '<button type="button" class="qdel" aria-label="Remove '+esc(t.term)+'">&times;</button></span>';
+  });
+  if(!(q[key]||[]).length) h += '<span class="tiny muted">none yet</span>';
+  h += '</div><input type="text" class="qadd" data-g="'+key+'" placeholder="add a term, then press Enter"></div>';
+  return h;
+}
+
 function renderSourcing(){
   const host = $('#sourcingBody'); const p = S.profile;
   if(!p){ host.innerHTML = '<div class="empty">Build the evidence ledger first.</div>'; return; }
-  const all = [].concat(p.titlesHeld||[], p.variants||[], p.adjacent||[]);
-  const queries = Array.from(new Set(all.filter(Boolean))).slice(0,14);
-  const primary = queries[0] || (p.skills||[])[0] || 'analyst';
-
+  const q = ensureQuery();
   let h = capBanner();
-  h += '<div class="card" style="margin-bottom:16px"><div class="row" style="gap:22px">'+
+
+  /* --- who you are, computed --- */
+  h += '<div class="card" style="margin-bottom:16px"><div class="row" style="gap:26px; align-items:flex-start">'+
     '<div><div class="eyebrow">Evidenced experience</div><div class="mono" style="font-size:1.35rem">'+
-      (p.years==null?'—':p.years+' yr')+'</div>'+
-      '<div class="tiny muted">computed from ledger dates</div></div>'+
+      (p.years==null?'—':p.years+' yr')+'</div><div class="tiny muted">from ledger dates</div></div>'+
     '<div><div class="eyebrow">Band</div><div style="font-weight:600; margin-top:4px">'+esc(p.seniority.band)+'</div>'+
       '<div class="tiny muted">'+esc(p.seniority.hint)+'</div></div>'+
     '<div class="grow"></div>'+
-    (p.variants ? '' : '<button class="btn primary" id="btnExpand" type="button">Expand title variants</button>')+
+    '<button class="btn'+(p.variants?'':' primary')+'" id="btnExpand" type="button">'+
+      (p.variants?'Re-expand titles':'Expand title variants')+'</button>'+
     '</div><div id="queryExpand" style="margin-top:10px"></div></div>';
 
-  h += '<div class="card" style="margin-bottom:16px"><div class="eyebrow">Search terms</div>'+
-    '<p class="small muted" style="margin:6px 0 10px">Titles you have held and skills you can evidence. '+
-    'Expanded variants are search suggestions, not claims about you.</p><div class="chips">';
-  queries.forEach(q=> h += '<span class="chip accent">'+esc(q)+'</span>');
-  (p.skills||[]).slice(0,12).forEach(s=> h += '<span class="chip">'+esc(s)+'</span>');
-  h += '</div>';
-  if(p.boolean) h += '<div style="margin-top:12px"><div class="eyebrow">Boolean string</div>'+
-    '<div class="bq mono" style="margin-top:5px; padding:8px; background:var(--surface-2); border-radius:3px; font-size:.75rem">'+
-    esc(p.boolean)+'</div>'+
-    '<button class="btn sm" id="copyBool" type="button" style="margin-top:8px">Copy</button></div>';
-  h += '</div>';
+  /* --- the query itself --- */
+  const modeSeg = '<div class="seg" role="group" aria-label="Skill matching">'+
+    '<button type="button" data-mode="any" aria-pressed="'+(q.skillMode==='any')+'">match any</button>'+
+    '<button type="button" data-mode="all" aria-pressed="'+(q.skillMode==='all')+'">match all</button></div>';
 
-  h += '<div class="eyebrow" style="margin-bottom:8px">Boards — pre-filled for “'+esc(primary)+'”</div>'+
-    '<div class="board-grid">';
-  BOARDS.forEach(b=>{
-    h += '<a class="board" href="'+esc(b.u(primary))+'" target="_blank" rel="noopener noreferrer">'+
-      '<span class="bn">'+esc(b.n)+'<span class="arrow">↗</span></span>'+
-      '<span class="bd">'+esc(b.d)+'</span></a>';
+  h += '<div class="card flush" style="margin-bottom:16px">'+
+    '<div class="card-head"><h3>Search query</h3>'+
+      '<span class="tiny muted">edit freely — every board link below recompiles</span></div>'+
+    '<div class="card-body stack">'+
+      qGroupHTML('titles','Job titles','Combined with OR. Use the exact titles Singapore employers post, not your internal job title.')+
+      qGroupHTML('skills','Skills','Required group. “Match any” widens; “match all” is precise and will cut results hard.', modeSeg)+
+      qGroupHTML('exclude','Exclusions','Removed from results. The defaults strip the recruitment noise that floods SG analyst searches.')+
+      qGroupHTML('rank','Ranking terms','Not sent to any board — used to sort listings you load, so a good posting rises without narrowing the search.')+
+    '</div></div>';
+
+  /* --- vocabulary mined from postings you have actually loaded --- */
+  h += '<div class="card flush" style="margin-bottom:16px"><div class="card-head">'+
+    '<h3>Vocabulary from real postings</h3>'+
+    '<label class="btn sm" for="vocabFeed" style="margin:0">Load listings.json</label>'+
+    '<input type="file" id="vocabFeed" accept=".json" hidden></div><div class="card-body">';
+  if(!S.listings.length){
+    h += '<p class="small muted">Load the file the repository workflow produced, or paste postings in stage 04. '+
+         'The exact skill terms employers tag on those listings are then counted here, so your query uses '+
+         'their words rather than yours.</p>';
+  } else {
+    const vocab = mineVocabulary();
+    const eviY = vocab.filter(v=> v.evidenced).slice(0,28);
+    const eviN = vocab.filter(v=> !v.evidenced).slice(0,28);
+    h += '<p class="small muted" style="margin-bottom:12px">'+vocab.length.toLocaleString()+
+         ' distinct terms across '+S.listings.length+' loaded listing'+(S.listings.length===1?'':'s')+
+         '. The number is how many postings tag that term.</p>';
+    h += '<div class="vocab-cols">';
+    h += '<div><div class="eyebrow" style="color:var(--ok)">You can evidence these — '+eviY.length+' shown</div>'+
+         '<div class="tiny muted" style="margin:4px 0 9px">Put them in the query. They are your words and theirs.</div><div class="chips">';
+    eviY.forEach(v=> h += '<span class="chip ok vterm"><span>'+esc(v.term)+'</span><span class="vn mono">'+v.n+'</span>'+
+      '<button type="button" class="vadd" data-term="'+esc(v.term)+'" data-to="skills" title="Add to skills">+</button></span>');
+    if(!eviY.length) h += '<span class="tiny muted">none — your ledger shares no vocabulary with these postings</span>';
+    h += '</div></div>';
+    h += '<div><div class="eyebrow" style="color:var(--warn)">You cannot evidence these — '+eviN.length+' shown</div>'+
+         '<div class="tiny muted" style="margin:4px 0 9px">Frequent here means the market expects it. Either a genuine skills gap, or noise to exclude.</div><div class="chips">';
+    eviN.forEach(v=> h += '<span class="chip warn vterm"><span>'+esc(v.term)+'</span><span class="vn mono">'+v.n+'</span>'+
+      '<button type="button" class="vadd" data-term="'+esc(v.term)+'" data-to="exclude" title="Add to exclusions">&minus;</button></span>');
+    h += '</div></div></div>';
+  }
+  h += '</div></div>';
+
+  /* --- boards, each compiled to the syntax it actually parses --- */
+  h += '<div class="eyebrow" style="margin-bottom:4px">Boards</div>'+
+       '<p class="small muted" style="margin-bottom:10px; max-width:70ch">Each card shows the exact string being sent. '+
+       'Boards that do not parse boolean get one plain link per title instead of a query they would mangle.</p>'+
+       '<div class="board-grid">';
+  BOARDS.forEach((b,bi)=>{
+    const qs = compileFor(b, q);
+    h += '<div class="board-card">'+
+      '<div class="bn">'+esc(b.n)+'<span class="chip tiny '+(b.syntax==='phrase'?'':'accent')+'">'+SYNTAX_LABEL[b.syntax]+'</span></div>'+
+      '<div class="bd">'+esc(b.d)+'</div>'+
+      (b.note ? '<div class="bnote">'+esc(b.note)+'</div>' : '');
+    if(!qs.length){ h += '<div class="bnote">Add a title or skill to build a query.</div></div>'; return; }
+    h += '<div class="bq mono">'+esc(qs.join('\n'))+'</div><div class="row" style="gap:6px">';
+    qs.forEach(s=> h += '<a class="btn sm" href="'+esc(b.u(s))+'" target="_blank" rel="noopener noreferrer">'+
+      (qs.length>1 ? esc(s.length>24 ? s.slice(0,24)+'…' : s) : 'Open search')+' &#8599;</a>');
+    h += '<button class="btn sm ghost bcopy" type="button" data-q="'+esc(qs.join(' | '))+'">Copy</button>';
+    h += '</div></div>';
   });
   h += '</div>';
 
+  /* --- the pipeline --- */
   h += '<div class="card" style="margin-top:18px"><div class="card-head" style="margin:-18px -18px 14px; border-radius:4px 4px 0 0">'+
     '<h3>Automated sync</h3><span class="chip">repository workflow</span></div>'+
-    '<p class="small">This page cannot reach the internet. The repository can: '+
-    '<span class="mono tiny">job_sourcing/fetch_listings.py</span> pulls real postings from the '+
-    'MyCareersFuture public API on a daily schedule and commits them. Export the query set below, '+
-    'commit it as <span class="mono tiny">job_sourcing/queries.json</span>, then load the resulting '+
-    '<span class="mono tiny">listings.json</span> in the Listings stage.</p>'+
+    '<p class="small">This page cannot reach the internet, and MyCareersFuture has no boolean search. '+
+    'So the pipeline fetches broadly on your titles and applies the boolean itself, in Python, over the results — '+
+    'which is the only way to get real AND/OR/NOT out of that source. Export this query, commit it as '+
+    '<span class="mono tiny">job_sourcing/queries.json</span>, and the daily run will use it.</p>'+
     '<div class="row" style="margin-top:12px">'+
       '<button class="btn primary" id="btnExportQ" type="button">Export queries.json</button>'+
       '<button class="btn" id="toListings" type="button">Go to listings</button>'+
     '</div></div>';
 
   host.innerHTML = h;
-  const e=$('#btnExpand'); if(e) e.addEventListener('click', expandQueries);
-  const cb=$('#copyBool'); if(cb) cb.addEventListener('click', ()=>{
-    navigator.clipboard.writeText(p.boolean).then(()=>toast('Copied.'), ()=>toast('Could not copy.'));
+  wireSourcing();
+}
+
+function wireSourcing(){
+  const host = $('#sourcingBody');
+  const vf = $('#vocabFeed'); if(vf) vf.addEventListener('change', e=>{ const f=e.target.files[0]; if(f) ingestFeed(f); });
+  const ex = $('#btnExpand'); if(ex) ex.addEventListener('click', expandQueries);
+  const tl = $('#toListings'); if(tl) tl.addEventListener('click', ()=> go('listings'));
+  const eq = $('#btnExportQ'); if(eq) eq.addEventListener('click', exportQueries);
+
+  // Delegated handlers bind once; the markup inside is replaced on every edit.
+  if(host.dataset.wired) return;
+  host.dataset.wired = '1';
+
+  host.addEventListener('click', e=>{
+    const q = ensureQuery(); if(!q) return;
+    const tog = e.target.closest('.qtog');
+    if(tog){
+      const c = tog.closest('.qchip');
+      q[c.dataset.g][+c.dataset.i].on = !q[c.dataset.g][+c.dataset.i].on;
+      persist(); renderSourcing(); return;
+    }
+    const del = e.target.closest('.qdel');
+    if(del){
+      const c = del.closest('.qchip');
+      q[c.dataset.g].splice(+c.dataset.i, 1);
+      persist(); renderSourcing(); return;
+    }
+    const mode = e.target.closest('[data-mode]');
+    if(mode){ q.skillMode = mode.dataset.mode; persist(); renderSourcing(); return; }
+    const vadd = e.target.closest('.vadd');
+    if(vadd){
+      const ok = addTerm(vadd.dataset.to, vadd.dataset.term, 'posting');
+      persist(); renderSourcing();
+      toast(ok ? 'Added \u201C'+vadd.dataset.term+'\u201D to '+vadd.dataset.to : 'Already in the query.');
+      return;
+    }
+    const cp = e.target.closest('.bcopy');
+    if(cp){ navigator.clipboard.writeText(cp.dataset.q).then(()=>toast('Copied.'), ()=>toast('Could not copy.')); return; }
   });
-  const tl=$('#toListings'); if(tl) tl.addEventListener('click', ()=> go('listings'));
-  const ex=$('#btnExportQ'); if(ex) ex.addEventListener('click', ()=>{
-    saveFile('queries.json', JSON.stringify({
-      _comment:'Generated by the Resume Provenance Desk from a verified evidence ledger.',
-      market:'Singapore', maxPagesPerQuery:3, postedWithinDays:30, queries:queries
-    }, null, 2));
+
+  host.addEventListener('keydown', e=>{
+    const add = e.target.closest('.qadd');
+    if(!add || e.key!=='Enter') return;
+    e.preventDefault();
+    if(addTerm(add.dataset.g, add.value, 'manual')){ persist(); renderSourcing(); }
+    else { add.value=''; toast('Already in the query.'); }
   });
+}
+
+function exportQueries(){
+  const q = ensureQuery(); if(!q) return;
+  const titles = onTerms(q.titles), skills = onTerms(q.skills), excl = onTerms(q.exclude);
+  if(!titles.length && !skills.length){ toast('Add a title or a skill first.'); return; }
+  saveFile('queries.json', JSON.stringify({
+    _comment:'Generated by the Resume Provenance Desk. MyCareersFuture has no boolean syntax, so "queries" is fetched broadly and mustAll / mustAny / exclude are applied to the results by fetch_listings.py.',
+    market:'Singapore', maxPagesPerQuery:3, postedWithinDays:30, hydrateTop:80,
+    queries: titles.length ? titles : skills.slice(0,3),
+    mustAny: q.skillMode==='any' ? skills : [],
+    mustAll: q.skillMode==='all' ? skills : [],
+    exclude: excl
+  }, null, 2));
 }
 
 /* ---------------------------- 04 ---------------------------- */
