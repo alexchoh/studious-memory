@@ -261,11 +261,20 @@ def dig(obj, *path, default=None):
     return cur
 
 
+# MyCareersFuture keys each lookup list by its own singular field name rather
+# than a shared "name". Confirmed against a real payload on 2026-09-22:
+#   employmentTypes -> employmentType, positionLevels -> position,
+#   categories -> category, skills -> skill,
+#   flexibleWorkArrangements -> flexibleWorkArrangement
+NAME_KEYS = ("name", "category", "skill", "employmentType", "position",
+             "flexibleWorkArrangement", "scheme", "district", "region")
+
+
 def names(seq):
     out = []
     for item in seq or []:
         if isinstance(item, dict):
-            val = item.get("name") or item.get("category") or item.get("skill")
+            val = next((item[k] for k in NAME_KEYS if item.get(k)), None)
             if val:
                 out.append(str(val))
         elif item:
@@ -284,8 +293,11 @@ def normalise(rec: dict, query: str) -> dict | None:
     slug = re.sub(r"[^a-z0-9]+", "-", f"{company} {title}".lower()).strip("-")[:80]
     url = f"https://www.mycareersfuture.gov.sg/job/{slug}-{uuid}" if uuid else ""
 
-    districts = names(dig(rec, "address", "districts", default=[])) or \
-        ([dig(rec, "address", "district", "region")] if dig(rec, "address", "district") else [])
+    districts = names(dig(rec, "address", "districts", default=[]))
+    if not districts:
+        area = dig(rec, "address", "building") or dig(rec, "address", "street")
+        if area:
+            districts = [str(area).title()]
 
     return {
         "id": f"mcf:{uuid}",
@@ -306,6 +318,7 @@ def normalise(rec: dict, query: str) -> dict | None:
         "salaryMax": dig(rec, "salary", "maximum"),
         "salaryType": dig(rec, "salary", "type", "salaryType") or dig(rec, "salary", "type", "id"),
         "districts": [d for d in districts if d],
+        "workArrangements": names(rec.get("flexibleWorkArrangements")),
         "postedDate": dig(rec, "metadata", "newPostingDate") or dig(rec, "metadata", "originalPostingDate"),
         "expiryDate": dig(rec, "metadata", "expiryDate"),
         "applications": dig(rec, "metadata", "totalNumberJobApplication"),
